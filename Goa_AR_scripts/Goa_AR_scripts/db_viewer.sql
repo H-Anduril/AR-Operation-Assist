@@ -1,4 +1,9 @@
 use AR_GOA_POC;
 GO
 
-select * from dbo.component;
+
+select
+	ROUTINE_SCHEMA,
+	ROUTINE_NAME
+from INFORMATION_SCHEMA.ROUTINES
+where ROUTINE_TYPE = 'PROCEDURE'

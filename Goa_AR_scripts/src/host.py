@@ -1,5 +1,6 @@
 import pyodbc
 import dbConnect
+import query
 
 
 if __name__ == '__main__':
@@ -11,26 +12,22 @@ if __name__ == '__main__':
         'AR_User',
         'T@@sM22n'
     )
-    new_cursorPacket = dbConnect.connect(dbConfig)
-    if new_cursorPacket.isValid is False:
+    new_connectionPacket = dbConnect.connect(dbConfig)
+    if new_connectionPacket.isValid is False:
         exit(-1)
     request = "idle"
     while request != 'q':
         request = input("press q to quit; press 't' to test input; press 's' to test view\n")
         if (request == 't'):
-            sql = """EXECUTE dbo.create_component ?, ?, ?, ?, ?"""
-            values = (-2, 'TEST', 'TEST_VENDOR', 'TEST_IMAGE', '/user/documents')
-            new_cursorPacket.cursor.execute(sql, values)
+            procedure = "create_component"
+            values = [-4, 'TEST', 'TEST_VENDOR', 'TEST_IMAGE', '/user/documents']
+            query.run_procedure(new_connectionPacket, procedure, values)
             
         elif request == 's':
-            new_cursorPacket.cursor.execute("SELECT * FROM dbo.component")
-            row = new_cursorPacket.cursor.fetchone()
-            while row:
-                print(row)
-                row = new_cursorPacket.cursor.fetchone()
+            query.list_all_procedures(new_connectionPacket)
+            query.print_query_result(new_connectionPacket);
+        new_connectionPacket.connection.commit()
     
-        new_cursorPacket.connection.commit()
-    
-    new_cursorPacket.close()
+    new_connectionPacket.close()
     exit(0)
         

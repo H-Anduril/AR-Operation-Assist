@@ -1,6 +1,6 @@
 import pyodbc
 
-class cursorPacket:
+class connectionPacket:
     def __init__(self, isValid, cursor, connection):
         self.isValid = isValid
         self.cursor = cursor
@@ -10,6 +10,7 @@ class cursorPacket:
         self.cursor.close()
         self.connection.close()
         self.isValid = False
+    
 
 class dbConfig():
     def __init__(self, server, database, username, password):
@@ -20,7 +21,7 @@ class dbConfig():
 
 # RETURN cursor if connection is successful; 
 def connect(dbConfig):
-    new_cursorPacket = cursorPacket(False, None, None)
+    new_connectionPacket = connectionPacket(False, None, None)
     driver_name = ''
     driver_names = [x for x in pyodbc.drivers() if x.endswith(' for SQL Server')]
     if len(driver_names) > 0:
@@ -35,16 +36,16 @@ def connect(dbConfig):
         )
     else:
         print("No suitable driver found. Connection Failed")
-        return new_cursorPacket
+        return new_connectionPacket
     print(connect_str)
     
     try:
         cnxn = pyodbc.connect(connect_str)
         print("Connection is working")
-        new_cursorPacket.isValid = True
-        new_cursorPacket.cursor = cnxn.cursor()
-        new_cursorPacket.connection = cnxn
+        new_connectionPacket.isValid = True
+        new_connectionPacket.cursor = cnxn.cursor()
+        new_connectionPacket.connection = cnxn
     except pyodbc.Error as ex:
-        # print(ex.args[1])
+        print(ex.args[1])
         print("Connection Failed")
-    return new_cursorPacket
+    return new_connectionPacket
