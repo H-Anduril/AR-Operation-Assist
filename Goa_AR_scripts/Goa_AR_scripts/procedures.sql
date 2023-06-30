@@ -32,3 +32,11 @@ begin
 	end
 end
 GO
+
+create procedure dbo.display_component 
+
+as
+begin
+	select * from dbo.component;
+end
+GO

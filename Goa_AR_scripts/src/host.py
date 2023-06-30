@@ -1,7 +1,5 @@
 import pyodbc
 import dbConnect
-import query
-
 
 if __name__ == '__main__':
     
@@ -12,22 +10,32 @@ if __name__ == '__main__':
         'AR_User',
         'T@@sM22n'
     )
-    new_connectionPacket = dbConnect.connect(dbConfig)
-    if new_connectionPacket.isValid is False:
+    new_dbPacket = dbConnect.connect(dbConfig)
+    if new_dbPacket.isValid is False:
         exit(-1)
     request = "idle"
-    while request != 'q':
-        request = input("press q to quit; press 't' to test input; press 's' to test view\n")
-        if (request == 't'):
-            procedure = "create_component"
-            values = [-4, 'TEST', 'TEST_VENDOR', 'TEST_IMAGE', '/user/documents']
-            query.run_procedure(new_connectionPacket, procedure, values)
+    while request != "quit":
+        request = input("""
+                        'quit' to quit\n
+                        'list procedures' to see all available procedures\n
+                        'list tables' to see all tables\n
+                        'run procedure' to select and run a procedure\n""")
+        match request:
+            case "quit":
+                new_dbPacket.close()
+                exit(0)
+            case "list procedures":
+                new_dbPacket.list_all_procedures()
+            case "list tables":
+                new_dbPacket.list_all_tables()
+            case "run procedure":
+                procedure = input("input procedure name: ")
+                value = input("input parameters, separate by space: ")
+                new_dbPacket.run_procedure(procedure, value)
+                
+                visualize = input("print result? Y/N")
+                if (visualize == "Y"):
+                    new_dbPacket.print_query_result()
             
-        elif request == 's':
-            query.list_all_procedures(new_connectionPacket)
-            query.print_query_result(new_connectionPacket);
-        new_connectionPacket.connection.commit()
-    
-    new_connectionPacket.close()
-    exit(0)
-        
+        new_dbPacket.connection.commit()
+
