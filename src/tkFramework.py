@@ -23,8 +23,16 @@ class windows(tk.Tk):
 
         # We will now create a dictionary of frames
         self.frames = {}
-        self.tagToFileDir = {}
+
+        self.idToImage = {}
+        self.idToPhotoImage = {}
+        self.idToTag = {}
+        
         self.tagToPhotoImage = {}
+        self.tagToImage = {}
+        self.tagToID = {}
+        self.tagToFileDir = {}
+        
         self.canvasSize = (0, 0)
         # we'll create the frames themselves later but let's add the components to the dictionary.
         for F in (DrawPage, CanvasConfigPage, CompletionScreen):
@@ -54,9 +62,15 @@ class DrawPage(tk.Frame):
         self.scene = Canvas(self, width=self.controller.canvasSize[0], height=self.controller.canvasSize[1], bg="white", highlightthickness=1, highlightbackground="black")
         self.scene.pack()
         
-        self.scene.bind( "<Button-1>", self.startMovement)
-        self.scene.bind( "<ButtonRelease-1>", self.stopMovement)
-        self.scene.bind( "<Motion>", self.movement)
+        self.scene.bind("<Button-1>", self.startMovement)
+        self.scene.bind("<Button-3>", self.deleteImage)
+        self.scene.bind("<ButtonRelease-1>", self.stopMovement)
+        self.scene.bind("<Motion>", self.movement)
+        self.scene.bind("<MouseWheel>", self.resize)
+        
+        self.cursorX = 0
+        self.cursorY = 0
+        
         self.move = False
         
         self.inputtext = Text(self, height=5, width=100)
@@ -69,6 +83,12 @@ class DrawPage(tk.Frame):
             text="Load File",
             command=self.load_file,
         )
+        
+        prev_button = tk.Button(
+            self,
+            text="Reconfig canvas size",
+            command=self.back_to_CanvasConfig,
+        )
 
         switch_window_button = tk.Button(
             self,
@@ -76,14 +96,24 @@ class DrawPage(tk.Frame):
             command=lambda: controller.show_frame(CompletionScreen),
         )
         
+        save_scene_button = tk.Button(
+            self,
+            text="Save Current Canvas scene",
+            command=self.save_canvas,
+        )
+        
         switch_window_button.pack(side="bottom", fill=tk.X)
         load_file_button.pack()
+        prev_button.pack()
         
     def load_file(self):
         tag = self.inputtext.get(1.0, "end")
         file_path = fd.askopenfilename()
         if (len(tag) == 1):
             showinfo(message="missing tag")
+            return
+        if tag in self.controller.tagToFileDir:
+            showinfo(message="Tag already exists")
             return
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
@@ -95,10 +125,17 @@ class DrawPage(tk.Frame):
         
     def presentImage(self, tag):
         print(self.controller.tagToFileDir[tag])
-        newImage = ImageTk.PhotoImage(file=self.controller.tagToFileDir[tag])
+        newImage = Image.open(self.controller.tagToFileDir[tag])
+        newPhotoImage = ImageTk.PhotoImage(newImage)
+        # newPhotoImage = ImageTk.PhotoImage(file=self.controller.tagToFileDir[tag])
         # newImage = newImage.zoom(0.5, 0.5)
-        self.controller.tagToPhotoImage[tag] = newImage
-        id = self.scene.create_image(250, 250, anchor=NW, image=newImage)
+        self.controller.tagToPhotoImage[tag] = newPhotoImage
+        self.controller.tagToImage[tag] = newImage
+        id = self.scene.create_image(250, 250, anchor=NW, image=newPhotoImage)
+        self.controller.idToPhotoImage[id] = newPhotoImage
+        self.controller.idToImage[id] = newImage
+        self.controller.idToTag[id] = tag
+        self.controller.tagToID[tag] = id
         # self.scene.itemconfig(id, image=newImage)
         print(id)
         
@@ -114,19 +151,69 @@ class DrawPage(tk.Frame):
     def stopMovement(self, event):
         self.move = False
 
-    def movement( self, event ):
+    def movement(self, event):
+        self.cursorX = self.scene.canvasx(event.x)
+        self.cursorY = self.scene.canvasy(event.y)
         if self.move:
-            end_x = self.scene.canvasx(event.x) #Translate mouse x screen coordinate to canvas coordinate
-            end_y = self.scene.canvasy(event.y) #Translate mouse y screen coordinate to canvas coordinate
-            print('movement end', end_x, end_y)
-            deltax = end_x - self.initi_x #Find the difference
-            deltay = end_y - self.initi_y
+            # end_x = self.scene.canvasx(event.x) #Translate mouse x screen coordinate to canvas coordinate
+            # end_y = self.scene.canvasy(event.y) #Translate mouse y screen coordinate to canvas coordinate
+            print('movement end', self.cursorX, self.cursorY)
+            deltax = self.cursorX - self.initi_x #Find the difference
+            deltay = self.cursorY - self.initi_y
             print('movement delta', deltax, deltay)
-            self.initi_x = end_x #Update previous current with new location
-            self.initi_y = end_y
+            self.initi_x = self.cursorX #Update previous current with new location
+            self.initi_y = self.cursorY
             print('movement init', self.initi_x, self.initi_y)
             # print(c.itemcget(self.movingimage, "filepath"))
             self.scene.move(self.movingimage, deltax, deltay) # move object
+            self.scene.tag_raise(self.movingimage)
+        
+    def resize(self, event):
+        movingimg = self.scene.find_closest(self.cursorX, self.cursorY, halo=5)
+        x = self.scene.canvasx(event.x)
+        y = self.scene.canvasy(event.y)
+        print(movingimg)
+        id = movingimg[0]
+        img_w, img_h = self.controller.idToImage[id].size
+        if (event.delta == -120):
+            newImage = self.controller.idToImage[id].resize((img_w * 9 // 10 - 5, img_h * 9 // 10 - 5))
+            # self.scene.scale(movingimg, x, y, 0.9, 0.9)
+        elif (event.delta == 120):
+            newImage = self.controller.idToImage[id].resize((img_w * 11 // 10 + 5, img_h * 11 // 10 + 5))
+            # self.scene.scale(movingimg, x, y, 1.1, 1.1)
+        newPhotoImage = ImageTk.PhotoImage(newImage)
+        self.scene.itemconfig(id, image=newPhotoImage)
+        self.controller.idToImage[id] = newImage
+        self.controller.idToPhotoImage[id] = newPhotoImage
+
+    def deleteImage(self, event):
+        movingimg = self.scene.find_closest(self.cursorX, self.cursorY, halo=5)
+        id = movingimg[0]
+        self.scene.delete(id)
+        del self.controller.idToImage[id]
+        del self.controller.idToPhotoImage[id]
+        tag = self.controller.idToTag[id]
+        del self.controller.idToTag[id]
+
+        del self.tagToPhotoImage[tag]
+        del self.tagToImage[tag]
+        del self.tagToID[tag]
+        del self.tagToFileDir[tag]
+        
+    def back_to_CanvasConfig(self):
+        self.controller.idToImage = {}
+        self.controller.idToPhotoImage = {}
+        self.controller.idToTag = {}
+        self.controller.tagToPhotoImage = {}
+        self.controller.tagToImage = {}
+        self.controller.tagToID = {}
+        self.controller.tagToFileDir = {}
+        self.controller.canvasSize = (0, 0)
+        self.scene.delete("all")
+        self.controller.show_frame(CanvasConfigPage)
+    
+    def save_canvas(self):
+        
         
     def __str__(self):
         return "DrawPage"
