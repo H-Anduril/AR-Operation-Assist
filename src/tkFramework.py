@@ -4,6 +4,9 @@ from tkinter import ttk
 from tkinter import filedialog as fd
 from tkinter.messagebox import showinfo
 from PIL import Image, ImageTk
+import pandas as pd
+import os
+import dbConnect
 
 class windows(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -105,9 +108,10 @@ class DrawPage(tk.Frame):
         switch_window_button.pack(side="bottom", fill=tk.X)
         load_file_button.pack()
         prev_button.pack()
+        save_scene_button.pack(side="right", fill=tk.Y)
         
     def load_file(self):
-        tag = self.inputtext.get(1.0, "end")
+        tag = self.inputtext.get(1.0, "end")[:-1]
         file_path = fd.askopenfilename()
         if (len(tag) == 1):
             showinfo(message="missing tag")
@@ -195,10 +199,10 @@ class DrawPage(tk.Frame):
         tag = self.controller.idToTag[id]
         del self.controller.idToTag[id]
 
-        del self.tagToPhotoImage[tag]
-        del self.tagToImage[tag]
-        del self.tagToID[tag]
-        del self.tagToFileDir[tag]
+        del self.controller.tagToPhotoImage[tag]
+        del self.controller.tagToImage[tag]
+        del self.controller.tagToID[tag]
+        del self.controller.tagToFileDir[tag]
         
     def back_to_CanvasConfig(self):
         self.controller.idToImage = {}
@@ -213,8 +217,28 @@ class DrawPage(tk.Frame):
         self.controller.show_frame(CanvasConfigPage)
     
     def save_canvas(self):
-        
-        
+        result = {'Scene Width': self.controller.canvasSize[0],
+                  'Scene Height': self.controller.canvasSize[1],
+                  'Tag': [],
+                  'x coord': [],
+                  'y coord': [],
+                  'width': [],
+                  'height': [],
+                  'File Location': []}
+        result
+        for id in self.scene.find_all():
+            tag = self.controller.idToTag[id]
+            result['Tag'].append(tag)
+            result['x coord'].append(self.scene.coords(id)[0])
+            result['y coord'].append(self.scene.coords(id)[1])
+            result['width'].append(self.scene.bbox(id)[2] - self.scene.bbox(id)[0])
+            result['height'].append(self.scene.bbox(id)[3] - self.scene.bbox(id)[1])
+            result['File Location'].append(self.controller.tagToFileDir[tag])
+
+        df = pd.DataFrame(data=result)
+        df.to_csv('../scene_output/new_scene.csv', index=False)
+        showinfo(message="Successfully saved")
+
     def __str__(self):
         return "DrawPage"
         
