@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog as fd
 from tkinter.messagebox import showinfo
+from tkinter.simpledialog import askstring
 from PIL import Image, ImageTk
 import pandas as pd
 import os
@@ -111,11 +112,15 @@ class DrawPage(tk.Frame):
         save_scene_button.pack(side="right", fill=tk.Y)
         
     def load_file(self):
-        tag = self.inputtext.get(1.0, "end")[:-1]
+        tag = self.inputtext.get(1.0, "end")
         file_path = fd.askopenfilename()
         if (len(tag) == 1):
             showinfo(message="missing tag")
             return
+        if file_path == '':
+            showinfo(message="file not selected")
+            return
+        tag = tag[:-1]
         if tag in self.controller.tagToFileDir:
             showinfo(message="Tag already exists")
             return
@@ -217,6 +222,13 @@ class DrawPage(tk.Frame):
         self.controller.show_frame(CanvasConfigPage)
     
     def save_canvas(self):
+        if len(self.scene.find_all()) == 0:
+            showinfo(message="Empty scene")
+            return
+        name = askstring('csvName', 'Name of output csv file')
+        if name == "":
+            showinfo(message="Invalid output file name")
+            return
         result = {'Scene Width': self.controller.canvasSize[0],
                   'Scene Height': self.controller.canvasSize[1],
                   'Tag': [],
@@ -225,7 +237,6 @@ class DrawPage(tk.Frame):
                   'width': [],
                   'height': [],
                   'File Location': []}
-        result
         for id in self.scene.find_all():
             tag = self.controller.idToTag[id]
             result['Tag'].append(tag)
@@ -236,7 +247,7 @@ class DrawPage(tk.Frame):
             result['File Location'].append(self.controller.tagToFileDir[tag])
 
         df = pd.DataFrame(data=result)
-        df.to_csv('../scene_output/new_scene.csv', index=False)
+        df.to_csv('../scene_output/{}.csv'.format(name), index=False)
         showinfo(message="Successfully saved")
 
     def __str__(self):

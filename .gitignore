@@ -2,3 +2,4 @@
 *.ssmssln
 *.ssmssqlproj
 __pycache__
+scene_output/
