@@ -1,14 +1,15 @@
 import tkinter as tk
 from tkinter import *
-from tkinter import ttk
-from tkinter import filedialog as fd
+from tkinter import filedialog as fd, colorchooser, ttk
 from tkinter.messagebox import showinfo
 from tkinter.simpledialog import askstring
 from PIL import Image, ImageTk
 import pandas as pd
+import io
 import os
 import dbConnect
 
+# TODO: make creating shape a new page (essentially a new Class)
 class windows(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -31,6 +32,7 @@ class windows(tk.Tk):
         self.idToImage = {}
         self.idToPhotoImage = {}
         self.idToTag = {}
+        self.notMovableID = set()
         
         self.tagToPhotoImage = {}
         self.tagToImage = {}
@@ -82,9 +84,9 @@ class DrawPage(tk.Frame):
         
         self.move = False
         
-        self.inputtext = Text(self, height=5, width=100)
+        self.inputtext = Text(self, height=3, width=100)
         self.inputtext.pack()
-        inputLabel = Label(self, text="input image tag here")
+        inputLabel = Label(self, text="input image tag above")
         inputLabel.pack()
         
         load_file_button = tk.Button(
@@ -111,18 +113,111 @@ class DrawPage(tk.Frame):
             command=self.save_canvas,
         )
         
+        draw_shape_button = tk.Button(
+            self,
+            text="Create New Shape",
+            command=self.create_new_shape,
+        )
+        
         switch_window_button.pack(side="bottom", fill=tk.X)
         load_file_button.pack()
+        draw_shape_button.pack()
         prev_button.pack()
-        save_scene_button.pack(side="right", fill=tk.Y)
+        save_scene_button.pack()
     
+    def create_new_shape(self):
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Shape Config")
+        
+        popup.color = ((0, 0, 0), '#000000') # initialized to be black
+        
+        colorFrame = tk.Frame(popup)
+        colorFrame.pack()
+        
+        color_label = tk.Label(popup, bg=popup.color[-1],height=1, width=2)
+        popup.color_label = color_label
+        
+        color_picker = tk.Button(
+            popup,
+            text="Pick color",
+            command=lambda: self.choose_color(popup)
+        )
+        
+        curr_color = tk.Label(popup, text="Current Color:")
+ 
+        color_picker.pack(in_=colorFrame, side=tk.LEFT, pady=20)
+        curr_color.pack(in_=colorFrame, side=tk.LEFT, padx=5)
+        color_label.pack(in_=colorFrame, side=tk.LEFT, padx=1)
+
+        shapeLabel = tk.Label(popup, text="Input Coordinates of Points to create new shape\nForm: x1, y1, x2, y2, ...")
+        #shapes = Entry(popup, width=50)
+        shapes = Text(popup, height=3, width=50)
+        shapeLabel.pack()
+        shapes.focus_set()
+        popup.shapes = shapes
+        shapes.pack()
+        
+        tagFrame = tk.Frame(popup)
+        tagFrame.pack()
+        
+        tagLabel = tk.Label(popup, text="Tag of the new shape")
+        tagEntry = Entry(popup)
+        tagLabel.pack(in_=tagFrame, side=tk.LEFT)
+        tagEntry.pack(in_=tagFrame, side=tk.LEFT, padx=1)
+        
+        popup.tagEntry = tagEntry
+        
+        popup.isSmooth = tk.IntVar()
+        smooth = tk.Checkbutton(popup, text="Draw Curve", variable=popup.isSmooth, onvalue=1, offvalue=0)
+        smooth.pack()
+        
+        confirm_button = tk.Button(
+            popup,
+            text="Generate Shape",
+            command=lambda: self.generate_shape(popup)
+        )
+        confirm_button.pack()
+    
+    def generate_shape(self, configWindow):
+        points = configWindow.shapes.get(1.0, "end")
+        try:
+            points = points[:-1].split(",")
+            points = list(map(float, points))
+        except ValueError:
+            showinfo(message="Invalid Input")
+            configWindow.shapes.delete(1.0, "end")
+            return
+            
+        if len(points) < 4 or len(points) % 2 == 1:
+            showinfo(message="Not Enough Input")
+            configWindow.shapes.delete(1.0, "end")
+            return
+        
+        print(points)
+        print(configWindow.isSmooth.get())
+        id = self.scene.create_line(points, fill=configWindow.color[-1], smooth=configWindow.isSmooth.get())
+        tag = configWindow.tagEntry.get()
+        self.controller.notMovableID.add(id)
+        self.controller.tagToID[tag] = id
+        self.controller.idToTag[id] = tag
+        print(tag)
+        configWindow.destroy()
+    
+    def choose_color(self, parent):
+        parent.color = colorchooser.askcolor(parent=parent, title="Choose color")
+        parent.color_label.config(bg=parent.color[-1])
+        
     def update_currInfo(self, event, reset=False):
         if reset:
             self.currImgConfigInfo.config(text="")
             return
         target = self.scene.find_closest(self.scene.canvasx(event.x), self.scene.canvasx(event.y), halo=5)
+        print(target)
+        if target == ():
+            return
         self.currImgConfigInfo.config(text=
-                              "Current Image Tag: {} | Current Image Center Coordinates (x, y): {} | Current Image Size: {}"
+                              "Current Image/Shape Tag: {} | Current Image/Shape Center Coordinates (x, y): {} | Current Image Size: {}"
                               .format(self.controller.idToTag[target[0]],
                                         self.scene.coords(target[0]),
                                         [(self.scene.bbox(target[0])[2] - self.scene.bbox(target[0])[0]), 
@@ -138,7 +233,7 @@ class DrawPage(tk.Frame):
             showinfo(message="file not selected")
             return
         tag = tag[:-1]
-        if tag in self.controller.tagToFileDir:
+        if tag in self.controller.tagToFileDir or tag in self.controller.tagToID:
             showinfo(message="Tag already exists")
             return
         self.controller.tagToFileDir[tag] = file_path
@@ -166,11 +261,12 @@ class DrawPage(tk.Frame):
         print(id)
         
     def startMovement(self, event):
-        self.move = True
         self.initi_x = self.scene.canvasx(event.x) #Translate mouse x screen coordinate to canvas coordinate
         self.initi_y = self.scene.canvasy(event.y) #Translate mouse y screen coordinate to canvas coordinate
         print('startMovement init', self.initi_x, self.initi_y)
         self.movingimage = self.scene.find_closest(self.initi_x, self.initi_y, halo=5) # get canvas object ID of where mouse pointer is 
+        if self.movingimage != () and self.movingimage[0] not in self.controller.notMovableID:
+            self.move = True
         print(self.movingimage)
         print(self.scene.find_all()) # get all canvas objects ID
         self.update_currInfo(event) 
@@ -252,6 +348,7 @@ class DrawPage(tk.Frame):
         self.scene.delete("all")
         self.controller.show_frame(CanvasConfigPage)
     
+    
     def save_canvas(self):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
@@ -260,6 +357,10 @@ class DrawPage(tk.Frame):
         if name == "":
             showinfo(message="Invalid output file name")
             return
+        ps = self.scene.postscript(colormode="color", width=self.controller.canvasSize[0], height=self.controller.canvasSize[1])
+        im = Image.open(io.BytesIO(ps.encode('utf-8')))
+        image_fileName = "/output/images/{}.png".format(name)
+        im.save(".." + image_fileName)
         result = {'Scene Width': self.controller.canvasSize[0],
                   'Scene Height': self.controller.canvasSize[1],
                   'Tag': [],
@@ -275,10 +376,14 @@ class DrawPage(tk.Frame):
             result['y coord'].append(self.scene.coords(id)[1])
             result['width'].append(self.scene.bbox(id)[2] - self.scene.bbox(id)[0])
             result['height'].append(self.scene.bbox(id)[3] - self.scene.bbox(id)[1])
-            result['File Location'].append(self.controller.tagToFileDir[tag])
+            if tag in self.controller.tagToFileDir:
+                result['File Location'].append(self.controller.tagToFileDir[tag])
+            else:
+                full_path = os.path.abspath(".." + image_fileName)
+                result['File Location'].append(full_path)
 
         df = pd.DataFrame(data=result)
-        df.to_csv('../scene_output/{}.csv'.format(name), index=False)
+        df.to_csv('../output/sheets/{}.csv'.format(name), index=False)
         showinfo(message="Successfully saved")
 
     def __str__(self):
