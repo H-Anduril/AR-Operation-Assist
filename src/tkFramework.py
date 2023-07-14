@@ -7,7 +7,20 @@ from PIL import Image, ImageTk
 import pandas as pd
 import io
 import os
+import math
+import cv2
+import numpy as np
 import dbConnect
+
+def open_eps(ps, dpi=300.0):
+    img = Image.open(io.BytesIO(ps.encode('utf-8')))
+    original = [float(d) for d in img.size]
+    scale = dpi/72.0            
+    if dpi != 0:
+        img.load(scale = math.ceil(scale))
+    if scale != 1:
+        img.thumbnail([round(scale * d) for d in original], Image.LANCZOS)
+    return img
 
 # TODO: make creating shape a new page (essentially a new Class)
 class windows(tk.Tk):
@@ -15,7 +28,7 @@ class windows(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         # Adding a title to the window
         self.wm_title("Test Application")
-        self.geometry("1200x900")
+        self.geometry("1920x1080")
 
         # creating a frame and assigning it to container
         container = tk.Frame(self, height=1920, width=1080)
@@ -43,7 +56,7 @@ class windows(tk.Tk):
         
         self.canvasSize = (0, 0)
         # we'll create the frames themselves later but let's add the components to the dictionary.
-        for F in (DrawPage, CanvasConfigPage, CompletionScreen):
+        for F in (DrawPage, CanvasConfigPage, CompletionScreen, NewShapePage):
             frame = F(container, self)
 
             # the windows class acts as the root window for the frames.
@@ -116,7 +129,7 @@ class DrawPage(tk.Frame):
         draw_shape_button = tk.Button(
             self,
             text="Create New Shape",
-            command=self.create_new_shape,
+            command=self.switch_NewShapePage,
         )
         
         switch_window_button.pack(side="bottom", fill=tk.X)
@@ -125,89 +138,7 @@ class DrawPage(tk.Frame):
         prev_button.pack()
         save_scene_button.pack()
     
-    def create_new_shape(self):
-        popup = Toplevel(self)
-        popup.geometry("750x250")
-        popup.title("Shape Config")
-        
-        popup.color = ((0, 0, 0), '#000000') # initialized to be black
-        
-        colorFrame = tk.Frame(popup)
-        colorFrame.pack()
-        
-        color_label = tk.Label(popup, bg=popup.color[-1],height=1, width=2)
-        popup.color_label = color_label
-        
-        color_picker = tk.Button(
-            popup,
-            text="Pick color",
-            command=lambda: self.choose_color(popup)
-        )
-        
-        curr_color = tk.Label(popup, text="Current Color:")
- 
-        color_picker.pack(in_=colorFrame, side=tk.LEFT, pady=20)
-        curr_color.pack(in_=colorFrame, side=tk.LEFT, padx=5)
-        color_label.pack(in_=colorFrame, side=tk.LEFT, padx=1)
 
-        shapeLabel = tk.Label(popup, text="Input Coordinates of Points to create new shape\nForm: x1, y1, x2, y2, ...")
-        #shapes = Entry(popup, width=50)
-        shapes = Text(popup, height=3, width=50)
-        shapeLabel.pack()
-        shapes.focus_set()
-        popup.shapes = shapes
-        shapes.pack()
-        
-        tagFrame = tk.Frame(popup)
-        tagFrame.pack()
-        
-        tagLabel = tk.Label(popup, text="Tag of the new shape")
-        tagEntry = Entry(popup)
-        tagLabel.pack(in_=tagFrame, side=tk.LEFT)
-        tagEntry.pack(in_=tagFrame, side=tk.LEFT, padx=1)
-        
-        popup.tagEntry = tagEntry
-        
-        popup.isSmooth = tk.IntVar()
-        smooth = tk.Checkbutton(popup, text="Draw Curve", variable=popup.isSmooth, onvalue=1, offvalue=0)
-        smooth.pack()
-        
-        confirm_button = tk.Button(
-            popup,
-            text="Generate Shape",
-            command=lambda: self.generate_shape(popup)
-        )
-        confirm_button.pack()
-    
-    def generate_shape(self, configWindow):
-        points = configWindow.shapes.get(1.0, "end")
-        try:
-            points = points[:-1].split(",")
-            points = list(map(float, points))
-        except ValueError:
-            showinfo(message="Invalid Input")
-            configWindow.shapes.delete(1.0, "end")
-            return
-            
-        if len(points) < 4 or len(points) % 2 == 1:
-            showinfo(message="Not Enough Input")
-            configWindow.shapes.delete(1.0, "end")
-            return
-        
-        print(points)
-        print(configWindow.isSmooth.get())
-        id = self.scene.create_line(points, fill=configWindow.color[-1], smooth=configWindow.isSmooth.get())
-        tag = configWindow.tagEntry.get()
-        self.controller.notMovableID.add(id)
-        self.controller.tagToID[tag] = id
-        self.controller.idToTag[id] = tag
-        print(tag)
-        configWindow.destroy()
-    
-    def choose_color(self, parent):
-        parent.color = colorchooser.askcolor(parent=parent, title="Choose color")
-        parent.color_label.config(bg=parent.color[-1])
-        
     def update_currInfo(self, event, reset=False):
         if reset:
             self.currImgConfigInfo.config(text="")
@@ -348,6 +279,8 @@ class DrawPage(tk.Frame):
         self.scene.delete("all")
         self.controller.show_frame(CanvasConfigPage)
     
+    def switch_NewShapePage(self):
+        self.controller.show_frame(NewShapePage)
     
     def save_canvas(self):
         if len(self.scene.find_all()) == 0:
@@ -357,10 +290,6 @@ class DrawPage(tk.Frame):
         if name == "":
             showinfo(message="Invalid output file name")
             return
-        ps = self.scene.postscript(colormode="color", width=self.controller.canvasSize[0], height=self.controller.canvasSize[1])
-        im = Image.open(io.BytesIO(ps.encode('utf-8')))
-        image_fileName = "/output/images/{}.png".format(name)
-        im.save(".." + image_fileName)
         result = {'Scene Width': self.controller.canvasSize[0],
                   'Scene Height': self.controller.canvasSize[1],
                   'Tag': [],
@@ -376,12 +305,7 @@ class DrawPage(tk.Frame):
             result['y coord'].append(self.scene.coords(id)[1])
             result['width'].append(self.scene.bbox(id)[2] - self.scene.bbox(id)[0])
             result['height'].append(self.scene.bbox(id)[3] - self.scene.bbox(id)[1])
-            if tag in self.controller.tagToFileDir:
-                result['File Location'].append(self.controller.tagToFileDir[tag])
-            else:
-                full_path = os.path.abspath(".." + image_fileName)
-                result['File Location'].append(full_path)
-
+            result['File Location'].append(self.controller.tagToFileDir[tag])
         df = pd.DataFrame(data=result)
         df.to_csv('../output/sheets/{}.csv'.format(name), index=False)
         showinfo(message="Successfully saved")
@@ -467,6 +391,188 @@ class CompletionScreen(tk.Frame):
         
     def __str__(self):
         return "CompletionScreen"    
+
+class NewShapePage(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Create New Item Page")
+        label.pack(padx=10, pady=10)
+        self.controller = controller
+        self.scene = Canvas(self, width=self.controller.canvasSize[0], height=self.controller.canvasSize[1], bg="white", highlightthickness=1, highlightbackground="black")
+        self.scene.pack()
+        
+        self.itemWidth = 0.0
+        self.itemHeight = 0.0
+        
+        scene_config_button = tk.Button(
+            self,
+            text="Config Item Size",
+            command=self.config_item_size,
+        )
+        
+        create_item_button = tk.Button(
+            self,
+            text="Create New Item",
+            command=self.create_new_shape,
+        )
+        
+        save_item_button = tk.Button(
+            self,
+            text="Save Shape",
+            command=self.save_shape,
+        )
+        scene_config_button.pack()
+        create_item_button.pack()
+        save_item_button.pack()
+    
+    def config_item_size(self):
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Shape Config")
+        popup.inputWidth = Text(popup, height=1, width=5)
+        popup.inputWidth.pack()
+        
+        labelWidth = Label(popup, text="Type Item Width above")
+        labelWidth.pack()
+        
+        popup.inputHeight = Text(popup, height=1, width=5)
+        popup.inputHeight.pack()
+        
+        labelHeight = Label(popup, text="Type Item Height above")
+        labelHeight.pack()
+        
+        confirm_button = tk.Button(
+            popup,
+            text="Confirm Item Size",
+            command=lambda: self.set_item_size(popup)
+        )
+        confirm_button.pack()
+        
+    def set_item_size(self, configWindow):
+        itemWidth = configWindow.inputWidth.get(1.0, "end")[:-1]
+        itemHeight = configWindow.inputHeight.get(1.0, "end")[:-1]
+        try:
+            itemWidth = float(itemWidth)
+            itemHeight = float(itemHeight)
+        except ValueError:
+            showinfo(message="Invalid Input")
+            return
+
+        if (itemHeight == 0.0 or itemWidth == 0.0):
+            showinfo(message="Invalid Canvas Size")
+            return
+        self.itemWidth = itemWidth
+        self.itemHeight = itemHeight
+        self.scene.config(height=int(self.itemHeight), width=int(self.itemWidth))
+        showinfo(message="Success")
+        
+    def create_new_shape(self):
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Shape Config")
+        
+        popup.color = ((0, 0, 0), '#000000') # initialized to be black
+        
+        colorFrame = tk.Frame(popup)
+        colorFrame.pack()
+        
+        color_label = tk.Label(popup, bg=popup.color[-1],height=1, width=2)
+        popup.color_label = color_label
+        
+        color_picker = tk.Button(
+            popup,
+            text="Pick color",
+            command=lambda: self.choose_color(popup)
+        )
+        
+        curr_color = tk.Label(popup, text="Current Color:")
+ 
+        color_picker.pack(in_=colorFrame, side=tk.LEFT, pady=20)
+        curr_color.pack(in_=colorFrame, side=tk.LEFT, padx=5)
+        color_label.pack(in_=colorFrame, side=tk.LEFT, padx=1)
+
+        shapeLabel = tk.Label(popup, text="Input Coordinates of Points to create new shape\nForm: x1, y1, x2, y2, ...")
+        #shapes = Entry(popup, width=50)
+        shapes = Text(popup, height=3, width=50)
+        shapeLabel.pack()
+        shapes.focus_set()
+        popup.shapes = shapes
+        shapes.pack()
+        
+        tagFrame = tk.Frame(popup)
+        tagFrame.pack()
+        
+        tagLabel = tk.Label(popup, text="Tag of the new shape")
+        tagEntry = Entry(popup)
+        tagLabel.pack(in_=tagFrame, side=tk.LEFT)
+        tagEntry.pack(in_=tagFrame, side=tk.LEFT, padx=1)
+        
+        popup.tagEntry = tagEntry
+        
+        popup.isSmooth = tk.IntVar()
+        smooth = tk.Checkbutton(popup, text="Draw Curve", variable=popup.isSmooth, onvalue=1, offvalue=0)
+        smooth.pack()
+        
+        confirm_button = tk.Button(
+            popup,
+            text="Generate Shape",
+            command=lambda: self.generate_shape(popup)
+        )
+        confirm_button.pack()
+    
+    def generate_shape(self, configWindow):
+        points = configWindow.shapes.get(1.0, "end")
+        try:
+            points = points[:-1].split(",")
+            points = list(map(float, points))
+        except ValueError:
+            showinfo(message="Invalid Input")
+            configWindow.shapes.delete(1.0, "end")
+            return
+            
+        if len(points) < 4 or len(points) % 2 == 1:
+            showinfo(message="Not Enough Input")
+            configWindow.shapes.delete(1.0, "end")
+            return
+        
+        print(points)
+        print(configWindow.isSmooth.get())
+        id = self.scene.create_line(points, fill=configWindow.color[-1], smooth=configWindow.isSmooth.get())
+        tag = configWindow.tagEntry.get()
+        print(tag)
+        configWindow.destroy()
+        
+    def save_shape(self):
+        if len(self.scene.find_all()) == 0:
+            showinfo(message="Empty scene")
+            return
+        name = askstring('csvName', 'Name of output csv file')
+        if name == "":
+            showinfo(message="Invalid output file name")
+            return
+        ps = self.scene.postscript(colormode="color", pagewidth=self.itemWidth-1, pageheight=self.itemHeight-1)
+        img = Image.open(io.BytesIO(ps.encode('utf-8')))
+        
+        img = img.convert("RGBA")
+        datas = img.getdata()
+        newData = []
+        for item in datas:
+            if item[0] == 255 and item[1] == 255 and item[2] == 255:
+                newData.append((255, 255, 255, 0))
+            else:
+                newData.append(item)
+
+        img.putdata(newData)
+        # im = open_eps(ps, dpi=119.5)
+        image_fileName = "/output/images/{}.png".format(name)
+        # im.save(".." + image_fileName, dpi=(119.5, 119.5))
+        img.save(".." + image_fileName)
+        showinfo(message="Success")
+    
+    def choose_color(self, parent):
+        parent.color = colorchooser.askcolor(parent=parent, title="Choose color")
+        parent.color_label.config(bg=parent.color[-1])
+            
         
 if __name__ == "__main__":
     testObj = windows()
