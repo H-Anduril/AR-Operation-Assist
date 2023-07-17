@@ -26,28 +26,37 @@ class dbPacket:
         self.print_query_result()
             
     def run_procedure(self, procedure: str, input: str):
-        sql = "EXECUTE " + procedure
+        sql = "DECLARE @return_value int;\nEXECUTE @return_value = " + procedure
         if (len(input) > 0):
             input = list(input.split(" "))
+            print(input)
             sql = sql + " "
             for _ in range(len(input) - 1):
                 sql = sql + "?, "
-            sql = sql + "?"
+            sql = sql + "?;\n"
+            sql = sql + "SELECT 'Return Value' = @return_value;"
+            print(sql)
             try:
                 self.cursor.execute(sql, tuple(input))
             except pyodbc.Error as ex:
                 print(ex.args[1])
         else:
             try:
+                sql = sql + ";\n" "SELECT 'Return Value' = @return_value;"
                 self.cursor.execute(sql)
             except pyodbc.Error as ex:
-                print(ex.args[1])
+                print(ex.args[1])    
                 
     def print_query_result(self):
         row = self.cursor.fetchone()
         while row:
             print(row)
             row = self.cursor.fetchone()
+        while self.cursor.nextset():
+            row = self.cursor.fetchone()
+            while row:
+                print(row)
+                row = self.cursor.fetchone()
             
     def run_query(self, sql: str, input: str):
         if len(input) > 0:

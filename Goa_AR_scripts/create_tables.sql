@@ -27,8 +27,8 @@ create table dbo.operation (
 create table dbo.step (
 	step_ID int NOT NULL,
 	operation_ID int NOT NULL,
-	panel_size_width int NOT NULL,
-	panel_size_height int NOT NULL,
+	panel_size_width float NOT NULL,
+	panel_size_height float NOT NULL,
 	CONSTRAINT pk_step_ID PRIMARY KEY (step_ID),
 	CONSTRAINT fk_operation_ID FOREIGN KEY (operation_ID)
 		REFERENCES dbo.operation(operation_ID)
