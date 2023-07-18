@@ -6,6 +6,7 @@ drop table if exists dbo.component;
 drop table if exists dbo.step;
 drop table if exists dbo.operation;
 drop table if exists dbo.product;
+drop table if exists dbo.step_output;
 
 create table dbo.product (
 	product_ID int NOT NULL,
@@ -29,6 +30,7 @@ create table dbo.step (
 	operation_ID int NOT NULL,
 	panel_size_width float NOT NULL,
 	panel_size_height float NOT NULL,
+	step_time_limit_sec int NOT NULL,
 	CONSTRAINT pk_step_ID PRIMARY KEY (step_ID),
 	CONSTRAINT fk_operation_ID FOREIGN KEY (operation_ID)
 		REFERENCES dbo.operation(operation_ID)

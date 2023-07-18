@@ -21,7 +21,7 @@ class dbPacket:
         self.print_query_result()
     
     def list_all_tables(self):
-        sql = "select * from INFORMATION_SCHEMA.TABLES;"
+        sql = r"select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_NAME not like '%sys%'"
         self.cursor.execute(sql)
         self.print_query_result()
             
@@ -57,13 +57,33 @@ class dbPacket:
             while row:
                 print(row)
                 row = self.cursor.fetchone()
+                
+    def write_query_result(self) -> list:
+        buf = []
+        row = self.cursor.fetchone()
+        while row:
+            buf.append(row)
+            row = self.cursor.fetchone()
+        while self.cursor.nextset():
+            row = self.cursor.fetchone()
+            while row:
+                buf.append(row)
+                row = self.cursor.fetchone()
+        return buf
             
-    def run_query(self, sql: str, input: str):
+    def run_query(self, sql: str, input=""):
         if len(input) > 0:
             self.cursor.execute(sql, tuple(list(input.split(" "))))
         else:
             self.cursor.execute(sql)
         self.print_query_result()
+    
+    def run_query_wResult(self, sql: str, input="") -> list:
+        if len(input) > 0:
+            self.cursor.execute(sql, tuple(list(input.split(" "))))
+        else:
+            self.cursor.execute(sql)
+        return self.write_query_result()
     
 
 class dbConfig():
@@ -91,7 +111,7 @@ def connect(dbConfig):
     else:
         print("No suitable driver found. Connection Failed")
         return new_dbPacket
-    print(connect_str)
+    # print(connect_str)
     
     try:
         cnxn = pyodbc.connect(connect_str)

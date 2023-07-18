@@ -52,11 +52,13 @@ class windows(tk.Tk):
         self.tagToID = {}
         self.tagToFileDir = {}
         
+        self.dbPacket = None
+        
         # self.idToShape
         
         self.canvasSize = (0, 0)
         # we'll create the frames themselves later but let's add the components to the dictionary.
-        for F in (DrawPage, CanvasConfigPage, CompletionScreen, NewShapePage):
+        for F in (DrawPage, CanvasConfigPage, CompletionScreen, NewShapePage, DBConfigPage, CRUDPage):
             frame = F(container, self)
 
             # the windows class acts as the root window for the frames.
@@ -64,7 +66,7 @@ class windows(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # Using a method to switch frames
-        self.show_frame(CanvasConfigPage)
+        self.show_frame(DBConfigPage)
         
     def show_frame(self, cont):
         frame = self.frames[cont]
@@ -73,6 +75,290 @@ class windows(tk.Tk):
         # raises the current frame to the top
         frame.tkraise()
         
+class DBConfigPage(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="This is the Database Config Page")
+        label.pack(padx=10, pady=10)
+        
+        serverFrame = tk.Frame(self)
+        serverFrame.pack()
+        serverLabel = tk.Label(self, text="Server:   ")
+        self.serverName = tk.Entry(self, bd=1)
+        serverLabel.pack(in_=serverFrame, side=tk.LEFT)
+        self.serverName.pack(in_=serverFrame, side=tk.LEFT, padx=1)
+        
+        dbFrame = tk.Frame(self)
+        dbFrame.pack()
+        dbLabel = tk.Label(self, text="Database: ")
+        self.dbName = tk.Entry(self, bd=1)
+        dbLabel.pack(in_=dbFrame, side=tk.LEFT)
+        self.dbName.pack(in_=dbFrame, side=tk.LEFT, padx=1)
+        
+        usernameFrame = tk.Frame(self)
+        usernameFrame.pack()
+        usernameLabel = tk.Label(self, text="Username: ")
+        self.usernameName = tk.Entry(self, bd=1)
+        usernameLabel.pack(in_=usernameFrame, side=tk.LEFT)
+        self.usernameName.pack(in_=usernameFrame, side=tk.LEFT, padx=1)
+        
+        passwordFrame = tk.Frame(self)
+        passwordFrame.pack()
+        passwordLabel = tk.Label(self, text="Password: ")
+        self.passwordName = tk.Entry(self, bd=1)
+        passwordLabel.pack(in_=passwordFrame, side=tk.LEFT)
+        self.passwordName.pack(in_=passwordFrame, side=tk.LEFT, padx=1)
+        
+        confirm_button = tk.Button(
+            self,
+            text="Login",
+            command=self.connectDB
+        )
+        confirm_button.pack()
+        
+        dev_button = tk.Button(
+            self,
+            text="Dev Login",
+            command=self.connectDB_dev
+        )
+        dev_button.pack()
+        
+    def connectDB(self):
+        server = self.serverName.get()
+        db = self.dbName.get()
+        username = self.usernameName.get()
+        password = self.passwordName.get()
+        dbConfig = dbConnect.dbConfig(server, db, username, password)
+        self.controller.dbPacket = dbConnect.connect(dbConfig)
+        if self.controller.dbPacket.isValid is False:
+            showinfo(message="Connection Failed")
+            return
+        showinfo(message="Success")
+        self.controller.show_frame(CRUDPage)
+        
+    def connectDB_dev(self):
+        dbConfig = dbConnect.dbConfig(
+            'S011DDB0003',
+            'AR_GOA_POC',
+            'AR_User',
+            'T@@sM22n'
+        )
+        self.controller.dbPacket = dbConnect.connect(dbConfig)
+        if self.controller.dbPacket.isValid is False:
+            showinfo(message="Connection Failed")
+            return
+        showinfo(message="Success")
+        self.controller.show_frame(CRUDPage)
+        
+class CRUDPage(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="This is the Database Operations Page")
+        label.pack(padx=10, pady=10)
+        
+        # CRUD: Read Operations
+        displayFrame = tk.Frame(self, pady=10)
+        displayFrame.pack()
+        
+        display_product_button = tk.Button(
+            self,
+            text="display all products",
+            command=self.display_products
+        )
+        
+        display_operation_button = tk.Button(
+            self,
+            text="display all operations of a product",
+            command=self.display_operations
+        )
+        
+        display_steps_button = tk.Button(
+            self,
+            text="display all steps of an operation",
+            command=self.display_steps
+        )
+        
+        display_components_button = tk.Button(
+            self,
+            text="display all components",
+            command=self.display_components
+        )
+        display_product_button.pack(in_=displayFrame, side=tk.LEFT)
+        display_operation_button.pack(in_=displayFrame, side=tk.LEFT, padx=2)
+        display_steps_button.pack(in_=displayFrame, side=tk.LEFT, padx=2)
+        display_components_button.pack(in_=displayFrame, side=tk.LEFT, padx=2)
+        
+        # CRUD: Create Operations
+        createFrame = tk.Frame(self)
+        createFrame.pack(pady=10)
+        
+        create_product_button = tk.Button(
+            self,
+            text="add a new product",
+            command=self.create_product
+        )
+        
+        create_operation_button = tk.Button(
+            self,
+            text="add a new operation for a product",
+            command=self.create_operation
+        )
+        
+        create_steps_button = tk.Button(
+            self,
+            text="add a new step for an operation",
+            command=self.create_step
+        )
+        
+        create_components_button = tk.Button(
+            self,
+            text="add a new component",
+            command=self.create_component
+        )
+        create_product_button.pack(in_=createFrame, side=tk.LEFT)
+        create_operation_button.pack(in_=createFrame, side=tk.LEFT, padx=2)
+        create_steps_button.pack(in_=createFrame, side=tk.LEFT, padx=2)
+        create_components_button.pack(in_=createFrame, side=tk.LEFT, padx=2)
+        
+        # CRUD: Update Operations
+        updateFrame = tk.Frame(self)
+        updateFrame.pack(pady=10)
+        
+        update_product_button = tk.Button(
+            self,
+            text="update a product",
+            command=self.update_product
+        )
+        
+        update_operation_button = tk.Button(
+            self,
+            text="update an operation of a product",
+            command=self.update_operation
+        )
+        
+        update_steps_button = tk.Button(
+            self,
+            text="update a step of an operation",
+            command=self.update_step
+        )
+        
+        update_components_button = tk.Button(
+            self,
+            text="update a component",
+            command=self.update_component
+        )
+        update_product_button.pack(in_=updateFrame, side=tk.LEFT)
+        update_operation_button.pack(in_=updateFrame, side=tk.LEFT, padx=2)
+        update_steps_button.pack(in_=updateFrame, side=tk.LEFT, padx=2)
+        update_components_button.pack(in_=updateFrame, side=tk.LEFT, padx=2)
+        
+        # CRUD: Delete Operations
+        deleteFrame = tk.Frame(self)
+        deleteFrame.pack(pady=10)
+        
+        delete_product_button = tk.Button(
+            self,
+            text="delete a product",
+            command=self.delete_product
+        )
+        
+        delete_operation_button = tk.Button(
+            self,
+            text="delete an operation of a product",
+            command=self.delete_operation
+        )
+        
+        delete_steps_button = tk.Button(
+            self,
+            text="delete a step of an operation",
+            command=self.delete_step
+        )
+        
+        delete_components_button = tk.Button(
+            self,
+            text="delete a component",
+            command=self.delete_component
+        )
+        delete_product_button.pack(in_=deleteFrame, side=tk.LEFT)
+        delete_operation_button.pack(in_=deleteFrame, side=tk.LEFT, padx=2)
+        delete_steps_button.pack(in_=deleteFrame, side=tk.LEFT, padx=2)
+        delete_components_button.pack(in_=deleteFrame, side=tk.LEFT, padx=2)
+        
+        displayTableFrame = tk.Frame(self, width=800, height=400)
+        displayTableFrame.pack(pady=20)
+        horizontalScroll = Scrollbar(displayTableFrame, orient='horizontal')
+        horizontalScroll.pack(side=tk.BOTTOM, fill=X)
+        verticalScroll = Scrollbar(displayTableFrame, orient='vertical')
+        verticalScroll.pack(side=tk.RIGHT, fill=Y)
+        
+        self.table = ttk.Treeview(displayTableFrame, yscrollcommand=verticalScroll.set, xscrollcommand=horizontalScroll.set)
+        self.table.pack()
+        verticalScroll.config(command=self.table.yview)
+        horizontalScroll.config(command=self.table.xview)
+    
+    #CRUD: Read APIs
+    def display_to_table(self, tableName: str, result: list):
+        # remove existing records
+        for i in self.table.get_children():
+            self.table.delete(i)
+            
+        self.table['columns'] = tuple([col.column_name for col in self.controller.dbPacket.cursor.columns(table=tableName)])
+        self.table.column("#0", width=0, stretch=NO)
+        for col in self.table['columns']:
+            self.table.column(col, anchor=CENTER, width=300, stretch=NO)
+        self.table.heading("#0",text="",anchor=CENTER)
+        for col in self.table['columns']:
+            self.table.heading(col,text=col,anchor=CENTER)
+        tableID = 0
+        for row in result:
+            self.table.insert(parent='',index='end',iid=tableID,text='', values=tuple(row))
+            tableID += 1
+            
+    def display_products(self):
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.product")
+        self.display_to_table('product', result)
+    def display_operations(self):
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.operation")
+        self.display_to_table('operation', result)
+    def display_steps(self):
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.step")
+        self.display_to_table('step', result)
+    def display_components(self):
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.component")
+        self.display_to_table('component', result)
+    
+    #CRUD: Create APIs
+    def create_product(self):
+        pass
+    def create_operation(self):
+        pass
+    def create_step(self):
+        pass
+    def create_component(self):
+        pass
+    
+    #CRUD: Update APIs
+    def update_product(self):
+        pass
+    def update_operation(self):
+        pass
+    def update_step(self):
+        pass
+    def update_component(self):
+        pass
+    
+    #CRUD: Delete APIs
+    def delete_product(self):
+        pass
+    def delete_operation(self):
+        pass
+    def delete_step(self):
+        pass
+    def delete_component(self):
+        pass
+    
 class DrawPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)

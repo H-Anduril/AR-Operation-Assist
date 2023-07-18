@@ -18,3 +18,6 @@ GO
 declare @return_value int;
 EXECUTE @return_value = display_component;
 select 'Return Value' = @return_value;
+
+select TABLE_NAME from INFORMATION_SCHEMA.TABLES
+where TABLE_NAME not like '%sys%';

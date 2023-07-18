@@ -36,6 +36,10 @@ if __name__ == '__main__':
                 visualize = input("print result? Y/N")
                 if (visualize == "Y"):
                     new_dbPacket.print_query_result()
+            case "columns":
+                print(new_dbPacket.run_query_wResult(sql="select * from dbo.component"))
+                #for column in new_dbPacket.cursor.columns(table='component'):
+                    #print(column.column_name)
             
         new_dbPacket.connection.commit()
 
