@@ -413,10 +413,10 @@ class CRUDPage(tk.Frame):
         self.controller.dbPacket.connection.commit()
         parent.destroy()
     def create_step(self):
-        pass
-    def create_component(self):
         self.controller.show_frame(CanvasConfigPage)
-    
+    def create_component(self):
+        self.controller.show_frame(NewShapePage)
+        
     #CRUD: Update APIs
     def update_product(self):
         pass
@@ -468,6 +468,9 @@ class DrawPage(tk.Frame):
         inputLabel.pack(in_=inputFrame, side=tk.LEFT)
         self.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
         
+        buttonsFrame = tk.Frame(self)
+        buttonsFrame.pack(pady=5)
+        
         load_file_button = tk.Button(
             self,
             text="Load File",
@@ -492,10 +495,18 @@ class DrawPage(tk.Frame):
             command=self.switch_NewShapePage,
         )
         
-        load_file_button.pack()
-        draw_shape_button.pack()
-        prev_button.pack()
-        save_scene_button.pack()
+        back_to_CRUD_button = tk.Button(
+            self,
+            text="Back to Main Page",
+            command=lambda: self.controller.show_frame(CRUDPage)
+        )
+
+        
+        load_file_button.pack(in_=buttonsFrame, side=tk.LEFT)
+        draw_shape_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
+        prev_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
+        save_scene_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
+        back_to_CRUD_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
     
 
     def update_currInfo(self, event, reset=False):
@@ -691,7 +702,7 @@ class CanvasConfigPage(tk.Frame):
         heightFrame = Frame(self)
         heightFrame.pack(pady=10)
         
-        labelHeight = Label(self, text="Type Canvas Height (in mm) above")
+        labelHeight = Label(self, text="Type Canvas Height (in mm)")
         self.inputHeight = Entry(self, width=10)
         labelHeight.pack(in_=heightFrame, side=tk.LEFT)
         self.inputHeight.pack(in_=heightFrame, side=tk.LEFT, padx=1)
@@ -710,6 +721,13 @@ class CanvasConfigPage(tk.Frame):
         )
         switch_button.pack()
         
+        back_to_CRUD_button = tk.Button(
+            self,
+            text="Back to Main Page",
+            command=lambda: self.controller.show_frame(CRUDPage)
+        )
+        back_to_CRUD_button.pack()
+        
     def switchToDrawPage(self):
         if (type(self.controller.canvasSize[0]) != int
                 or type(self.controller.canvasSize[1]) != int 
@@ -722,19 +740,32 @@ class CanvasConfigPage(tk.Frame):
     def saveCanvasConfig(self):
         canvasWidth = self.inputWidth.get()
         canvasHeight = self.inputHeight.get()
-        if (not canvasHeight.isdigit() or not canvasWidth.isdigit()):
+        if (not canvasHeight.replace(".", "").isnumeric() or not canvasWidth.replace(".", "").isnumeric()):
             showinfo(message="Invalid Input")
             return
-        canvasWidth = int(canvasWidth)
-        canvasHeight = int(canvasHeight)
-        if (canvasHeight == 0 or canvasWidth == 0):
+        canvasWidth = float(canvasWidth)
+        canvasHeight = float(canvasHeight)
+        if (canvasHeight == 0.0 or canvasWidth == 0.0):
             showinfo(message="Invalid Canvas Size")
             return
+        # Determine scale factor if physical workstation size exceeds maximum size of canvas
         if canvasWidth <= self.controller.maxWidth and canvasHeight <= self.controller.maxHeight:
-            self.controller.canvasSize = (canvasWidth, canvasHeight)
-            showinfo(message="canvas width: {} | canvas height: {}".format(self.controller.canvasSize[0], self.controller.canvasSize[1]))
-        elif canvasWidth <= self.controller.maxWidth and canvasHeight > self.controller.maxHeight:
-            factor = self.controller.maxHeight / canvasHeight
+            self.controller.canvasSize = (int(canvasWidth), int(canvasHeight))
+        elif ((canvasWidth <= self.controller.maxWidth and canvasHeight > self.controller.maxHeight) 
+              or (canvasWidth - self.controller.maxWidth < canvasHeight - self.controller.maxHeight)):
+            self.controller.scaleFactor = self.controller.maxHeight / canvasHeight
+            self.controller.canvasSize = (int(canvasWidth * self.controller.scaleFactor), self.controller.maxHeight)
+        elif ((canvasWidth > self.controller.maxWidth and canvasHeight <= self.controller.maxHeight) 
+            or (canvasWidth - self.controller.maxWidth >= canvasHeight - self.controller.maxHeight)):
+            
+            self.controller.scaleFactor = self.controller.maxWidth / canvasWidth
+            self.controller.canvasSize = (self.controller.maxWidth, int(canvasHeight * self.controller.scaleFactor))
+        
+        showinfo(message="canvas width: {} | canvas height: {} | Scale Factor: {}".format(
+            self.controller.canvasSize[0],
+            self.controller.canvasSize[1],
+            self.controller.scaleFactor))
+            
     
     def __str__(self):
         return "CanvasConfigPage"
@@ -771,6 +802,12 @@ class NewShapePage(tk.Frame):
         scene_config_button.pack()
         create_item_button.pack()
         save_item_button.pack()
+        back_to_CRUD_button = tk.Button(
+            self,
+            text="Back to Main Page",
+            command=lambda: self.controller.show_frame(CRUDPage)
+        )
+        back_to_CRUD_button.pack()
     
     def config_item_size(self):
         popup = Toplevel(self)
