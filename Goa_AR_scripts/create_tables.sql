@@ -9,7 +9,7 @@ drop table if exists dbo.product;
 drop table if exists dbo.step_output;
 
 create table dbo.product (
-	product_ID int NOT NULL,
+	product_ID varchar(256) NOT NULL,
 	product_name varchar(256) NOT NULL,
 	CONSTRAINT pk_product_ID PRIMARY KEY (product_ID)
 );
@@ -17,23 +17,25 @@ create table dbo.product (
 
 create table dbo.operation (
 	operation_ID int NOT NULL,
-	product_ID int NOT NULL,
+	product_ID varchar(256) NOT NULL,
 	operation_name varchar(256) NOT NULL,
-	CONSTRAINT pk_operation_ID PRIMARY KEY (operation_ID),
 	CONSTRAINT fk_product_ID FOREIGN KEY (product_ID)
-		REFERENCES dbo.product(product_ID)
+		REFERENCES dbo.product(product_ID),
+	CONSTRAINT pk_operation_ID PRIMARY KEY (product_ID, operation_ID)
 );
 
 
 create table dbo.step (
 	step_ID int NOT NULL,
+	step_name varchar NOT NULL,
 	operation_ID int NOT NULL,
+	product_ID varchar(256) NOT NULL,
 	panel_size_width float NOT NULL,
 	panel_size_height float NOT NULL,
 	step_time_limit_sec int NOT NULL,
-	CONSTRAINT pk_step_ID PRIMARY KEY (step_ID),
-	CONSTRAINT fk_operation_ID FOREIGN KEY (operation_ID)
-		REFERENCES dbo.operation(operation_ID)
+	CONSTRAINT fk_operation_ID FOREIGN KEY (product_ID, operation_ID)
+		REFERENCES dbo.operation(product_ID, operation_ID),
+	CONSTRAINT pk_step_ID PRIMARY KEY (product_ID, operation_ID, step_ID)
 );
 
 
@@ -66,9 +68,9 @@ create table dbo.step_component (
 	component_x float,
 	component_y float,
 	component_scaleFactor float,
+	operation_ID int,
+	product_ID varchar(256),
 	CONSTRAINT pk_step_component PRIMARY KEY (step_ID, component_ID),
-	CONSTRAINT fk_step_ID FOREIGN KEY (step_ID)
-		REFERENCES dbo.step(step_ID),
-	CONSTRAINT fk_component_ID FOREIGN KEY (component_ID)
-		REFERENCES dbo.component(component_ID),
+	CONSTRAINT fk_step_ID FOREIGN KEY (product_ID, operation_ID, step_ID)
+		REFERENCES dbo.step(product_ID, operation_ID, step_ID),
 );

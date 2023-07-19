@@ -133,6 +133,9 @@ class DBConfigPage(tk.Frame):
         db = self.dbName.get()
         username = self.usernameName.get()
         password = self.passwordName.get()
+        if (server == "" or db == "" or username == "" or password == ""):
+            showinfo(message="Invalid Input")
+            return
         dbConfig = dbConnect.dbConfig(server, db, username, password)
         self.controller.dbPacket = dbConnect.connect(dbConfig)
         if self.controller.dbPacket.isValid is False:
@@ -375,13 +378,6 @@ class CRUDPage(tk.Frame):
         popup.geometry("750x250")
         popup.title("Create a new operation")
         
-        productID_Frame = tk.Frame(popup)
-        productID_Frame.pack(pady=10)
-        pidLabel = tk.Label(popup, text="Product ID:   ")
-        popup.productID = tk.Entry(popup, bd=1)
-        pidLabel.pack(in_=productID_Frame, side=tk.LEFT)
-        popup.productID.pack(in_=productID_Frame, side=tk.LEFT, padx=1)
-        
         oidFrame = tk.Frame(popup)
         oidFrame.pack(pady=10)
         oidLabel = tk.Label(popup, text="New Operation ID:   ")
@@ -389,9 +385,16 @@ class CRUDPage(tk.Frame):
         oidLabel.pack(in_=oidFrame, side=tk.LEFT)
         popup.oid.pack(in_=oidFrame, side=tk.LEFT, padx=1)
         
+        productID_Frame = tk.Frame(popup)
+        productID_Frame.pack(pady=10)
+        pidLabel = tk.Label(popup, text="Product ID:   ")
+        popup.productID = tk.Entry(popup, bd=1)
+        pidLabel.pack(in_=productID_Frame, side=tk.LEFT)
+        popup.productID.pack(in_=productID_Frame, side=tk.LEFT, padx=1)
+        
         oNameFrame = tk.Frame(popup)
         oNameFrame.pack(pady=10)
-        oNameLabel = tk.Label(popup, text="New Operation ID:   ")
+        oNameLabel = tk.Label(popup, text="New Operation Name:   ")
         popup.oName = tk.Entry(popup, bd=1)
         oNameLabel.pack(in_=oNameFrame, side=tk.LEFT)
         popup.oName.pack(in_=oNameFrame, side=tk.LEFT, padx=1)
@@ -404,6 +407,7 @@ class CRUDPage(tk.Frame):
         create_operation_button.pack(pady=10)
         
     def confirm_operation_add(self, parent):
+        print([parent.oid.get(), parent.productID.get(), parent.oName.get()])
         res = self.controller.dbPacket.run_procedure("add_operation", [parent.oid.get(), parent.productID.get(), parent.oName.get()])
         if res == "Success":
             output = self.controller.dbPacket.write_query_result()
@@ -454,7 +458,7 @@ class DrawPage(tk.Frame):
         self.scene.bind("<Button-3>", self.deleteImage)
         self.scene.bind("<ButtonRelease-1>", self.stopMovement)
         self.scene.bind("<Motion>", self.movement)
-        self.scene.bind("<MouseWheel>", self.resize)
+        # self.scene.bind("<MouseWheel>", self.resize)
         
         self.cursorX = 0
         self.cursorY = 0
@@ -539,7 +543,7 @@ class DrawPage(tk.Frame):
             return
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
-        self.inputtext.delete()
+        self.inputtext.delete(0, END)
         self.presentImage(tag)
         
     def reconfig_size(self):
@@ -616,6 +620,7 @@ class DrawPage(tk.Frame):
 
     def deleteImage(self, event):
         movingimg = self.scene.find_closest(self.cursorX, self.cursorY, halo=5)
+        if len(movingimg) == 0: return
         id = movingimg[0]
         self.scene.delete(id)
         del self.controller.idToImage[id]
@@ -653,6 +658,21 @@ class DrawPage(tk.Frame):
         self.controller.show_frame(NewShapePage)
     
     def save_canvas(self):
+        if len(self.scene.find_all()) == 0:
+            showinfo(message="Empty scene")
+            return
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Provide Step Config")
+        
+        sidFrame = tk.Frame(popup)
+        sidFrame.pack(pady=10)
+        sidLabel = tk.Label(popup, text="New Step ID:   ")
+        popup.sid = tk.Entry(popup, bd=1)
+        sidLabel.pack(in_=sidFrame, side=tk.LEFT)
+        popup.sid.pack(in_=sidFrame, side=tk.LEFT, padx=1)
+    
+    def save_canvas_toCSV(self):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
             return
@@ -757,7 +777,6 @@ class CanvasConfigPage(tk.Frame):
             self.controller.canvasSize = (int(canvasWidth * self.controller.scaleFactor), self.controller.maxHeight)
         elif ((canvasWidth > self.controller.maxWidth and canvasHeight <= self.controller.maxHeight) 
             or (canvasWidth - self.controller.maxWidth >= canvasHeight - self.controller.maxHeight)):
-            
             self.controller.scaleFactor = self.controller.maxWidth / canvasWidth
             self.controller.canvasSize = (self.controller.maxWidth, int(canvasHeight * self.controller.scaleFactor))
         
@@ -781,6 +800,8 @@ class NewShapePage(tk.Frame):
         
         self.itemWidth = 0.0
         self.itemHeight = 0.0
+        
+        self.scene.bind("<Button-3>", self.deleteImage)
         
         scene_config_button = tk.Button(
             self,
@@ -809,6 +830,14 @@ class NewShapePage(tk.Frame):
         )
         back_to_CRUD_button.pack()
     
+    def deleteImage(self, event):
+        self.cursorX = self.scene.canvasx(event.x)
+        self.cursorY = self.scene.canvasy(event.y)
+        movingimg = self.scene.find_closest(self.cursorX, self.cursorY, halo=5)
+        if len(movingimg) == 0: return
+        id = movingimg[0]
+        self.scene.delete(id)
+    
     def config_item_size(self):
         popup = Toplevel(self)
         popup.geometry("750x250")
@@ -816,13 +845,13 @@ class NewShapePage(tk.Frame):
         popup.inputWidth = Text(popup, height=1, width=5)
         popup.inputWidth.pack()
         
-        labelWidth = Label(popup, text="Type Item Width above")
+        labelWidth = Label(popup, text="Type Item Width in mm above")
         labelWidth.pack()
         
         popup.inputHeight = Text(popup, height=1, width=5)
         popup.inputHeight.pack()
         
-        labelHeight = Label(popup, text="Type Item Height above")
+        labelHeight = Label(popup, text="Type Item Height in mm above")
         labelHeight.pack()
         
         confirm_button = tk.Button(

@@ -69,7 +69,7 @@ as
 begin
 	set NOCOUNT ON;
 	declare @retval int;
-	if @ip_product_ID in (select product_ID from dbo.operation)
+	if @ip_product_ID in (select product_ID from dbo.product)
 	begin
 		if @ip_operation_ID in (select operation_ID from dbo.operation)
 		begin
