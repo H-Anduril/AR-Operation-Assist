@@ -3,3 +3,6 @@
 *.ssmssqlproj
 __pycache__
 output/
+src/experiments
+data/
+*.ps
