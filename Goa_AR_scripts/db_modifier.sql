@@ -16,8 +16,10 @@ GO
 --insert into dbo.step values(-1, -1, 800, 600);
 -- select * from dbo.step
 declare @return_value int;
-EXECUTE @return_value = display_component;
+EXECUTE @return_value = add_product '10', 'test';
 select 'Return Value' = @return_value;
 
 select TABLE_NAME from INFORMATION_SCHEMA.TABLES
 where TABLE_NAME not like '%sys%';
+
+select * from dbo.product;

@@ -45,7 +45,27 @@ class dbPacket:
                 sql = sql + ";\n" "SELECT 'Return Value' = @return_value;"
                 self.cursor.execute(sql)
             except pyodbc.Error as ex:
-                print(ex.args[1])    
+                print(ex.args[1])
+    def run_procedure(self, procedure: str, input: list) -> str:
+        sql = "DECLARE @return_value int;\nEXECUTE @return_value = " + procedure
+        if (len(input) > 0):
+            sql = sql + " "
+            for _ in range(len(input) - 1):
+                sql = sql + "?, "
+            sql = sql + "?;\n"
+            sql = sql + "SELECT 'Return Value' = @return_value;"
+            try:
+                self.cursor.execute(sql, tuple(input))
+            except pyodbc.Error as ex:
+                print(ex.args[1])
+                return ex.args[1]
+        else:
+            try:
+                sql = sql + ";\n" "SELECT 'Return Value' = @return_value;"
+                self.cursor.execute(sql)
+            except pyodbc.Error as ex:
+                return ex.args[1]
+        return "Success"   
                 
     def print_query_result(self):
         row = self.cursor.fetchone()

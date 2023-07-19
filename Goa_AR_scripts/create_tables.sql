@@ -17,8 +17,8 @@ create table dbo.product (
 
 create table dbo.operation (
 	operation_ID int NOT NULL,
-	operation_name varchar(256) NOT NULL,
 	product_ID int NOT NULL,
+	operation_name varchar(256) NOT NULL,
 	CONSTRAINT pk_operation_ID PRIMARY KEY (operation_ID),
 	CONSTRAINT fk_product_ID FOREIGN KEY (product_ID)
 		REFERENCES dbo.product(product_ID)
@@ -65,6 +65,7 @@ create table dbo.step_component (
 	component_height float,
 	component_x float,
 	component_y float,
+	component_scaleFactor float,
 	CONSTRAINT pk_step_component PRIMARY KEY (step_ID, component_ID),
 	CONSTRAINT fk_step_ID FOREIGN KEY (step_ID)
 		REFERENCES dbo.step(step_ID),

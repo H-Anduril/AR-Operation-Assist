@@ -28,7 +28,7 @@ class windows(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         # Adding a title to the window
         self.wm_title("Test Application")
-        self.geometry("1920x1080")
+        self.geometry("1900x1000")
 
         # creating a frame and assigning it to container
         container = tk.Frame(self, height=1920, width=1080)
@@ -54,11 +54,15 @@ class windows(tk.Tk):
         
         self.dbPacket = None
         
-        # self.idToShape
+        self.maxWidth = 1440
+        self.maxHeight = 810
+        
+        # Scale images if needed
+        self.scaleFactor = 1.0
         
         self.canvasSize = (0, 0)
         # we'll create the frames themselves later but let's add the components to the dictionary.
-        for F in (DrawPage, CanvasConfigPage, CompletionScreen, NewShapePage, DBConfigPage, CRUDPage):
+        for F in (DrawPage, CanvasConfigPage, NewShapePage, DBConfigPage, CRUDPage):
             frame = F(container, self)
 
             # the windows class acts as the root window for the frames.
@@ -331,13 +335,87 @@ class CRUDPage(tk.Frame):
     
     #CRUD: Create APIs
     def create_product(self):
-        pass
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Create a new product")
+        
+        productID_Frame = tk.Frame(popup)
+        productID_Frame.pack(pady=10)
+        pidLabel = tk.Label(popup, text="New Product ID:   ")
+        popup.productID = tk.Entry(popup, bd=1)
+        pidLabel.pack(in_=productID_Frame, side=tk.LEFT)
+        popup.productID.pack(in_=productID_Frame, side=tk.LEFT, padx=1)
+        
+        pName_Frame = tk.Frame(popup)
+        pName_Frame.pack(pady=10)
+        pNameLabel = tk.Label(popup, text="New Product Name:   ")
+        popup.pName = tk.Entry(popup, bd=1)
+        pNameLabel.pack(in_=pName_Frame, side=tk.LEFT)
+        popup.pName.pack(in_=pName_Frame, side=tk.LEFT, padx=1)
+        
+        create_product_button = tk.Button(
+            popup,
+            text="Add Product",
+            command=lambda: self.confirm_product_add(popup)
+        )
+        create_product_button.pack(pady=10)
+    
+    def confirm_product_add(self, parent):
+        res = self.controller.dbPacket.run_procedure("add_product", [parent.productID.get(), parent.pName.get()])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input.")
+        self.controller.dbPacket.connection.commit()
+        parent.destroy()
+        
     def create_operation(self):
-        pass
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Create a new operation")
+        
+        productID_Frame = tk.Frame(popup)
+        productID_Frame.pack(pady=10)
+        pidLabel = tk.Label(popup, text="Product ID:   ")
+        popup.productID = tk.Entry(popup, bd=1)
+        pidLabel.pack(in_=productID_Frame, side=tk.LEFT)
+        popup.productID.pack(in_=productID_Frame, side=tk.LEFT, padx=1)
+        
+        oidFrame = tk.Frame(popup)
+        oidFrame.pack(pady=10)
+        oidLabel = tk.Label(popup, text="New Operation ID:   ")
+        popup.oid = tk.Entry(popup, bd=1)
+        oidLabel.pack(in_=oidFrame, side=tk.LEFT)
+        popup.oid.pack(in_=oidFrame, side=tk.LEFT, padx=1)
+        
+        oNameFrame = tk.Frame(popup)
+        oNameFrame.pack(pady=10)
+        oNameLabel = tk.Label(popup, text="New Operation ID:   ")
+        popup.oName = tk.Entry(popup, bd=1)
+        oNameLabel.pack(in_=oNameFrame, side=tk.LEFT)
+        popup.oName.pack(in_=oNameFrame, side=tk.LEFT, padx=1)
+        
+        create_operation_button = tk.Button(
+            popup,
+            text="Add Product",
+            command=lambda: self.confirm_operation_add(popup)
+        )
+        create_operation_button.pack(pady=10)
+        
+    def confirm_operation_add(self, parent):
+        res = self.controller.dbPacket.run_procedure("add_operation", [parent.oid.get(), parent.productID.get(), parent.oName.get()])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input.")
+        self.controller.dbPacket.connection.commit()
+        parent.destroy()
     def create_step(self):
         pass
     def create_component(self):
-        pass
+        self.controller.show_frame(CanvasConfigPage)
     
     #CRUD: Update APIs
     def update_product(self):
@@ -383,10 +461,12 @@ class DrawPage(tk.Frame):
         
         self.move = False
         
-        self.inputtext = Text(self, height=3, width=100)
-        self.inputtext.pack()
-        inputLabel = Label(self, text="input image tag above")
-        inputLabel.pack()
+        inputFrame = Frame(self)
+        inputFrame.pack()
+        self.inputtext = Entry(self, width=30)
+        inputLabel = Label(self, text="Image Tag")
+        inputLabel.pack(in_=inputFrame, side=tk.LEFT)
+        self.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
         
         load_file_button = tk.Button(
             self,
@@ -398,12 +478,6 @@ class DrawPage(tk.Frame):
             self,
             text="Reconfig canvas size",
             command=self.back_to_CanvasConfig,
-        )
-
-        switch_window_button = tk.Button(
-            self,
-            text="Next Window",
-            command=lambda: controller.show_frame(CompletionScreen),
         )
         
         save_scene_button = tk.Button(
@@ -418,7 +492,6 @@ class DrawPage(tk.Frame):
             command=self.switch_NewShapePage,
         )
         
-        switch_window_button.pack(side="bottom", fill=tk.X)
         load_file_button.pack()
         draw_shape_button.pack()
         prev_button.pack()
@@ -441,7 +514,7 @@ class DrawPage(tk.Frame):
                                         (self.scene.bbox(target[0])[3] - self.scene.bbox(target[0])[1])]))
         
     def load_file(self):
-        tag = self.inputtext.get(1.0, "end")
+        tag = self.inputtext.get()
         file_path = fd.askopenfilename()
         if (len(tag) == 1):
             showinfo(message="missing tag")
@@ -455,7 +528,7 @@ class DrawPage(tk.Frame):
             return
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
-        self.inputtext.delete(1.0, "end")
+        self.inputtext.delete()
         self.presentImage(tag)
         
     def reconfig_size(self):
@@ -606,17 +679,22 @@ class CanvasConfigPage(tk.Frame):
         label = tk.Label(self, text="This is the Canvas Size Config Page")
         label.pack(padx=10, pady=10)
         
-        self.inputWidth = Text(self, height=1, width=5)
-        self.inputWidth.pack()
+        widthFrame = Frame(self)
+        widthFrame.pack(pady=10)
         
-        labelWidth = Label(self, text="Type Canvas Width above")
-        labelWidth.pack()
+        labelWidth = Label(self, text="Type Canvas Width (in mm)")
+        self.inputWidth = Entry(self, width=10)
         
-        self.inputHeight = Text(self, height=1, width=5)
-        self.inputHeight.pack()
+        labelWidth.pack(in_=widthFrame, side=tk.LEFT)
+        self.inputWidth.pack(in_=widthFrame, side=tk.LEFT, padx=1)
         
-        labelHeight = Label(self, text="Type Canvas Height above")
-        labelHeight.pack()
+        heightFrame = Frame(self)
+        heightFrame.pack(pady=10)
+        
+        labelHeight = Label(self, text="Type Canvas Height (in mm) above")
+        self.inputHeight = Entry(self, width=10)
+        labelHeight.pack(in_=heightFrame, side=tk.LEFT)
+        self.inputHeight.pack(in_=heightFrame, side=tk.LEFT, padx=1)
         
         confirm_button = tk.Button(
             self,
@@ -632,13 +710,6 @@ class CanvasConfigPage(tk.Frame):
         )
         switch_button.pack()
         
-        # switch_window_button = tk.Button(
-        #     self,
-        #     text="Go to the Draw Screen",
-        #     command=lambda: controller.show_frame(DrawPage),
-        # )
-        # switch_window_button.pack(side="bottom", fill=tk.X)
-        
     def switchToDrawPage(self):
         if (type(self.controller.canvasSize[0]) != int
                 or type(self.controller.canvasSize[1]) != int 
@@ -649,8 +720,8 @@ class CanvasConfigPage(tk.Frame):
         self.controller.show_frame(DrawPage)
         
     def saveCanvasConfig(self):
-        canvasWidth = self.inputWidth.get(1.0, "end")[:-1]
-        canvasHeight = self.inputHeight.get(1.0, "end")[:-1]
+        canvasWidth = self.inputWidth.get()
+        canvasHeight = self.inputHeight.get()
         if (not canvasHeight.isdigit() or not canvasWidth.isdigit()):
             showinfo(message="Invalid Input")
             return
@@ -659,24 +730,14 @@ class CanvasConfigPage(tk.Frame):
         if (canvasHeight == 0 or canvasWidth == 0):
             showinfo(message="Invalid Canvas Size")
             return
-        self.controller.canvasSize = (canvasWidth, canvasHeight)
-        showinfo(message="canvas width: {} | canvas height: {}".format(self.controller.canvasSize[0], self.controller.canvasSize[1]))
+        if canvasWidth <= self.controller.maxWidth and canvasHeight <= self.controller.maxHeight:
+            self.controller.canvasSize = (canvasWidth, canvasHeight)
+            showinfo(message="canvas width: {} | canvas height: {}".format(self.controller.canvasSize[0], self.controller.canvasSize[1]))
+        elif canvasWidth <= self.controller.maxWidth and canvasHeight > self.controller.maxHeight:
+            factor = self.controller.maxHeight / canvasHeight
     
     def __str__(self):
         return "CanvasConfigPage"
-
-class CompletionScreen(tk.Frame):
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        label = tk.Label(self, text="Completion Screen, we did it!")
-        label.pack(padx=10, pady=10)
-        switch_window_button = ttk.Button(
-            self, text="Return to menu", command=lambda: controller.show_frame(CanvasConfigPage)
-        )
-        switch_window_button.pack(side="bottom", fill=tk.X)
-        
-    def __str__(self):
-        return "CompletionScreen"    
 
 class NewShapePage(tk.Frame):
     def __init__(self, parent, controller):
@@ -751,6 +812,7 @@ class NewShapePage(tk.Frame):
         self.itemHeight = itemHeight
         self.scene.config(height=int(self.itemHeight), width=int(self.itemWidth))
         showinfo(message="Success")
+        configWindow.destroy()
         
     def create_new_shape(self):
         popup = Toplevel(self)
