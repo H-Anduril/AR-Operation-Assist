@@ -8,6 +8,7 @@ drop procedure if exists dbo.fill_step_size;
 drop procedure if exists dbo.add_product;
 drop procedure if exists dbo.add_operation;
 drop procedure if exists dbo.verify_step;
+drop procedure if exists dbo.add_step;
 GO
 
 create procedure dbo.create_component 
@@ -89,6 +90,29 @@ begin
 		select 'Product not Defined' as response;
 		set @retval = 1;
 	end
+	return @retval;
+end
+GO
+
+create procedure dbo.add_step
+	@ip_product_ID int,
+	@ip_operation_ID int,
+	@ip_step_ID int,
+	@ip_panel_size_width int,
+	@ip_panel_size_height int,
+	@ip_step_time_limit int,
+	@ip_step_name varchar(256),
+	@ip_scale_factor float
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+
+	insert into dbo.step values(@ip_step_ID, @ip_step_name, @ip_operation_ID, @ip_product_ID,
+		@ip_panel_size_width, @ip_panel_size_height, @ip_step_time_limit, @ip_scale_factor);
+	select 'Success' as response;
+	set @retval = 0;
 	return @retval;
 end
 GO

@@ -23,16 +23,20 @@ def open_eps(ps, dpi=300.0):
     return img
 
 class newStep:
-    def __init__(self, isValid=False, pid=None, oid=None, sid=None):
+    def __init__(self, isValid=False, pid=None, oid=None, sid=None, name="", timeLimit=-1):
         if isValid:
             self.isValid = True
             self.pid = pid
             self.oid = oid
             self.sid = sid
+            self.name = name
+            self.timeLimit = timeLimit
         self.isValid = False
         self.pid = None
         self.oid = None
         self.sid = None
+        self.name = ""
+        self.timeLimit = -1
         
 
 class windows(tk.Tk):
@@ -437,25 +441,39 @@ class CRUDPage(tk.Frame):
         popup.title("Create a new step")
         
         stepID_Frame = tk.Frame(popup)
-        stepID_Frame.pack(pady=10)
+        stepID_Frame.pack(pady=5)
         sidLabel = tk.Label(popup, text="New Step ID:   ")
         popup.stepID = tk.Entry(popup, bd=1)
         sidLabel.pack(in_=stepID_Frame, side=tk.LEFT)
         popup.stepID.pack(in_=stepID_Frame, side=tk.LEFT, padx=1)
         
+        name_Frame = tk.Frame(popup)
+        name_Frame.pack(pady=5)
+        nameLabel = tk.Label(popup, text="Step Name:   ")
+        popup.name = tk.Entry(popup, bd=1)
+        nameLabel.pack(in_=name_Frame, side=tk.LEFT)
+        popup.name.pack(in_=name_Frame, side=tk.LEFT, padx=1)
+        
         opID_Frame = tk.Frame(popup)
-        opID_Frame.pack(pady=10)
+        opID_Frame.pack(pady=5)
         oidLabel = tk.Label(popup, text="Operation ID:   ")
         popup.opID = tk.Entry(popup, bd=1)
         oidLabel.pack(in_=opID_Frame, side=tk.LEFT)
         popup.opID.pack(in_=opID_Frame, side=tk.LEFT, padx=1)
         
         prodID_Frame = tk.Frame(popup)
-        prodID_Frame.pack(pady=10)
+        prodID_Frame.pack(pady=5)
         pidLabel = tk.Label(popup, text="Product ID:   ")
         popup.prodID = tk.Entry(popup, bd=1)
         pidLabel.pack(in_=prodID_Frame, side=tk.LEFT)
         popup.prodID.pack(in_=prodID_Frame, side=tk.LEFT, padx=1)
+        
+        timeLimit_Frame = tk.Frame(popup)
+        timeLimit_Frame.pack(pady=5)
+        timeLabel = tk.Label(popup, text="Time Limit for Step:   ")
+        popup.timeLimit = tk.Entry(popup, bd=1)
+        timeLabel.pack(in_=timeLimit_Frame, side=tk.LEFT)
+        popup.timeLimit.pack(in_=timeLimit_Frame, side=tk.LEFT, padx=1)
         
         confirm_step_button = tk.Button(
             popup,
@@ -468,8 +486,11 @@ class CRUDPage(tk.Frame):
         sid = parent.stepID.get()
         oid = parent.opID.get()
         pid = parent.prodID.get()
+        timeLimit = parent.timeLimit.get()
+        name = parent.name.get()
         
-        if (len(sid) == 0 or len(oid) == 0 or len(pid) == 0 or not sid.lstrip('-+').isdigit() or not oid.lstrip('-+').isdigit() or not pid.lstrip('-+').isdigit()):
+        if (len(sid) == 0 or len(oid) == 0 or len(pid) == 0 or len(timeLimit) == 0
+            or not sid.lstrip('-+').isdigit() or not oid.lstrip('-+').isdigit() or not pid.lstrip('-+').isdigit() or not timeLimit.lstrip('-+').isdigit()):
             showinfo(message="Invalid Input")
             return
         res = self.controller.dbPacket.run_procedure("verify_step", [pid, oid, sid])
@@ -479,6 +500,8 @@ class CRUDPage(tk.Frame):
                 self.controller.newStep.pid = pid
                 self.controller.newStep.oid = oid
                 self.controller.newStep.sid = sid
+                self.controller.newStep.name = name
+                self.controller.nextStep.timeLimit = timeLimit
                 self.controller.newStep.isValid = True
                 parent.destroy()
                 self.controller.show_frame(CanvasConfigPage)
@@ -731,16 +754,20 @@ class DrawPage(tk.Frame):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
             return
-        popup = Toplevel(self)
-        popup.geometry("750x250")
-        popup.title("Provide Step Config")
         
-        sidFrame = tk.Frame(popup)
-        sidFrame.pack(pady=10)
-        sidLabel = tk.Label(popup, text="New Step ID:   ")
-        popup.sid = tk.Entry(popup, bd=1)
-        sidLabel.pack(in_=sidFrame, side=tk.LEFT)
-        popup.sid.pack(in_=sidFrame, side=tk.LEFT, padx=1)
+        res = self.controller.dbPacket.run_procedure("add_step",
+                [self.controller.newStep.pid, self.controller.newStep.oid, self.controller.newStep.sid,
+                 self.controller.canvasSize[0], self.controller.canvasSize[1], self.controller.newStep.timeLimit, self.controller.scaleFactor])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            if output[1][0] == 0:
+                # TODO: Save component info
+                showinfo(message="good")
+            else:
+                showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input")
+        
     
     def save_canvas_toCSV(self):
         if len(self.scene.find_all()) == 0:
