@@ -7,6 +7,7 @@ drop procedure if exists dbo.display_component;
 drop procedure if exists dbo.fill_step_size;
 drop procedure if exists dbo.add_product;
 drop procedure if exists dbo.add_operation;
+drop procedure if exists dbo.verify_step;
 GO
 
 create procedure dbo.create_component 
@@ -127,6 +128,43 @@ begin
 	begin
 		set @retval = -1;
 		select 'Step ID not found' as response;
+	end
+	return @retval;
+end
+GO
+
+create procedure dbo.verify_step
+	@ip_product_ID int,
+	@ip_operation_ID int,
+	@ip_step_ID int
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+
+	if @ip_product_ID in (select product_ID from dbo.operation)
+	begin
+		if @ip_operation_ID in (select operation_ID from dbo.operation where product_ID = @ip_product_ID)
+		begin
+			if @ip_step_ID not in (select step_ID from dbo.step where product_ID = @ip_product_ID and operation_ID = @ip_operation_ID)
+			begin
+				set @retval = 0;
+				select 'Valid Step ID' as response;
+			end
+			else begin
+				set @retval = 1;
+				select 'Step ID Already Exists' as response;
+			end
+		end
+		else begin
+			set @retval = 2;
+			select 'Operation not Exist' as response;
+		end
+	end
+	else begin
+		set @retval = 3;
+		select 'Product not Exist' as response;
 	end
 	return @retval;
 end

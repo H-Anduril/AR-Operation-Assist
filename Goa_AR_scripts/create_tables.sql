@@ -33,7 +33,7 @@ create table dbo.step (
 	panel_size_width float NOT NULL,
 	panel_size_height float NOT NULL,
 	step_time_limit_sec int NOT NULL,
-	CONSTRAINT fk_operation_ID FOREIGN KEY (product_ID, operation_ID)
+	CONSTRAINT fk_p_op_ID FOREIGN KEY (product_ID, operation_ID)
 		REFERENCES dbo.operation(product_ID, operation_ID),
 	CONSTRAINT pk_step_ID PRIMARY KEY (product_ID, operation_ID, step_ID)
 );

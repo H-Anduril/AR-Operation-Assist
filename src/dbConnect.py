@@ -140,6 +140,6 @@ def connect(dbConfig):
         new_dbPacket.cursor = cnxn.cursor()
         new_dbPacket.connection = cnxn
     except pyodbc.Error as ex:
-        print(ex.args[1])
+        #print(ex.args[1])
         print("Connection Failed")
     return new_dbPacket

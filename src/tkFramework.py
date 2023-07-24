@@ -22,7 +22,19 @@ def open_eps(ps, dpi=300.0):
         img.thumbnail([round(scale * d) for d in original], Image.LANCZOS)
     return img
 
-# TODO: make creating shape a new page (essentially a new Class)
+class newStep:
+    def __init__(self, isValid=False, pid=None, oid=None, sid=None):
+        if isValid:
+            self.isValid = True
+            self.pid = pid
+            self.oid = oid
+            self.sid = sid
+        self.isValid = False
+        self.pid = None
+        self.oid = None
+        self.sid = None
+        
+
 class windows(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -56,6 +68,8 @@ class windows(tk.Tk):
         
         self.maxWidth = 1440
         self.maxHeight = 810
+        
+        self.newStep = newStep(False)
         
         # Scale images if needed
         self.scaleFactor = 1.0
@@ -416,8 +430,63 @@ class CRUDPage(tk.Frame):
             showinfo(message="Invalid Input.")
         self.controller.dbPacket.connection.commit()
         parent.destroy()
+    
     def create_step(self):
-        self.controller.show_frame(CanvasConfigPage)
+        popup = Toplevel(self)
+        popup.geometry("750x250")
+        popup.title("Create a new step")
+        
+        stepID_Frame = tk.Frame(popup)
+        stepID_Frame.pack(pady=10)
+        sidLabel = tk.Label(popup, text="New Step ID:   ")
+        popup.stepID = tk.Entry(popup, bd=1)
+        sidLabel.pack(in_=stepID_Frame, side=tk.LEFT)
+        popup.stepID.pack(in_=stepID_Frame, side=tk.LEFT, padx=1)
+        
+        opID_Frame = tk.Frame(popup)
+        opID_Frame.pack(pady=10)
+        oidLabel = tk.Label(popup, text="Operation ID:   ")
+        popup.opID = tk.Entry(popup, bd=1)
+        oidLabel.pack(in_=opID_Frame, side=tk.LEFT)
+        popup.opID.pack(in_=opID_Frame, side=tk.LEFT, padx=1)
+        
+        prodID_Frame = tk.Frame(popup)
+        prodID_Frame.pack(pady=10)
+        pidLabel = tk.Label(popup, text="Product ID:   ")
+        popup.prodID = tk.Entry(popup, bd=1)
+        pidLabel.pack(in_=prodID_Frame, side=tk.LEFT)
+        popup.prodID.pack(in_=prodID_Frame, side=tk.LEFT, padx=1)
+        
+        confirm_step_button = tk.Button(
+            popup,
+            text="Confirm Step",
+            command=lambda: self.verify_step_ID(popup)
+        )
+        confirm_step_button.pack(pady=10)
+    
+    def verify_step_ID(self, parent):
+        sid = parent.stepID.get()
+        oid = parent.opID.get()
+        pid = parent.prodID.get()
+        
+        if (len(sid) == 0 or len(oid) == 0 or len(pid) == 0 or not sid.lstrip('-+').isdigit() or not oid.lstrip('-+').isdigit() or not pid.lstrip('-+').isdigit()):
+            showinfo(message="Invalid Input")
+            return
+        res = self.controller.dbPacket.run_procedure("verify_step", [pid, oid, sid])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            if (output[1][0] == 0):
+                self.controller.newStep.pid = pid
+                self.controller.newStep.oid = oid
+                self.controller.newStep.sid = sid
+                self.controller.newStep.isValid = True
+                parent.destroy()
+                self.controller.show_frame(CanvasConfigPage)
+            else:
+                showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input")
+        
     def create_component(self):
         self.controller.show_frame(NewShapePage)
         
