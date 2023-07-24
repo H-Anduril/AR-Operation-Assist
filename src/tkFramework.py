@@ -621,7 +621,8 @@ class DrawPage(tk.Frame):
     def presentImage(self, tag):
         print(self.controller.tagToFileDir[tag])
         newImage = Image.open(self.controller.tagToFileDir[tag])
-        newPhotoImage = ImageTk.PhotoImage(newImage)
+        temp = newImage.resize((int(newImage.size[0]*self.controller.scaleFactor), int(newImage.size[1]*self.controller.scaleFactor)), resample=Image.LANCZOS)
+        newPhotoImage = ImageTk.PhotoImage(temp)
         # newPhotoImage = ImageTk.PhotoImage(file=self.controller.tagToFileDir[tag])
         # newImage = newImage.zoom(0.5, 0.5)
         self.controller.tagToPhotoImage[tag] = newPhotoImage
@@ -870,6 +871,13 @@ class NewShapePage(tk.Frame):
         self.itemWidth = 0.0
         self.itemHeight = 0.0
         
+        self.scaleFactor = 1.0
+        self.maxWidth = 1440
+        self.maxHeight = 810
+        
+        self.currImgConfigInfo = tk.Label(self, text="")
+        self.currImgConfigInfo.pack()
+        
         self.scene.bind("<Button-3>", self.deleteImage)
         
         scene_config_button = tk.Button(
@@ -943,9 +951,27 @@ class NewShapePage(tk.Frame):
         if (itemHeight == 0.0 or itemWidth == 0.0):
             showinfo(message="Invalid Canvas Size")
             return
-        self.itemWidth = itemWidth
-        self.itemHeight = itemHeight
+        
+        if itemWidth <= self.maxWidth and itemHeight <= self.maxHeight:
+            self.itemWidth = itemWidth
+            self.itemHeight = itemHeight
+        elif ((itemWidth <= self.maxWidth and itemHeight > self.maxHeight) 
+              or (itemWidth - self.maxWidth < itemHeight - self.maxHeight)):
+            self.scaleFactor = self.maxHeight / itemHeight
+            self.itemWidth = itemWidth * self.scaleFactor
+            self.itemHeight = self.maxHeight
+        elif ((itemWidth > self.maxWidth and itemHeight <= self.maxHeight) 
+            or (itemWidth - self.maxWidth >= itemHeight - self.maxHeight)):
+            self.scaleFactor = self.maxWidth / itemWidth
+            self.itemWidth = self.maxWidth
+            self.itemHeight = itemHeight * self.scaleFactor
+        
         self.scene.config(height=int(self.itemHeight), width=int(self.itemWidth))
+        self.currImgConfigInfo.config(text=
+            "Current Item Width: {} | Current Item Height: {} | Current Scale Factor: {}"
+            .format(itemWidth,
+                    itemHeight,
+                    self.scaleFactor))  
         showinfo(message="Success")
         configWindow.destroy()
         
@@ -1020,6 +1046,10 @@ class NewShapePage(tk.Frame):
         
         print(points)
         print(configWindow.isSmooth.get())
+        for i in range(len(points)):
+            points[i] *= self.scaleFactor
+            if points[i] < 1.0:
+                points[i] = 1.0
         id = self.scene.create_line(points, fill=configWindow.color[-1], smooth=configWindow.isSmooth.get())
         tag = configWindow.tagEntry.get()
         print(tag)
@@ -1029,12 +1059,16 @@ class NewShapePage(tk.Frame):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
             return
-        name = askstring('csvName', 'Name of output csv file')
+        name = askstring('Image Name', 'Name of output image file')
         if name == "":
             showinfo(message="Invalid output file name")
             return
+        print(self.itemHeight, self.itemWidth)
         ps = self.scene.postscript(colormode="color", pagewidth=self.itemWidth-1, pageheight=self.itemHeight-1)
         img = Image.open(io.BytesIO(ps.encode('utf-8')))
+        
+        img = img.resize(((int)(img.size[0]/self.scaleFactor), (int)(img.size[1]/self.scaleFactor)), Image.BICUBIC)
+        print(img.size)
         
         img = img.convert("RGBA")
         datas = img.getdata()
