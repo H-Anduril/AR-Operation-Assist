@@ -27,7 +27,7 @@ create table dbo.operation (
 
 create table dbo.step (
 	step_ID int NOT NULL,
-	step_name varchar NOT NULL,
+	step_name varchar(256) NOT NULL,
 	operation_ID int NOT NULL,
 	product_ID varchar(256) NOT NULL,
 	panel_size_width float NOT NULL,

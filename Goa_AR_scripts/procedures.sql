@@ -10,6 +10,7 @@ drop procedure if exists dbo.add_operation;
 drop procedure if exists dbo.verify_step;
 drop procedure if exists dbo.add_step;
 drop procedure if exists dbo.add_component;
+drop procedure if exists dbo.record_step_component;
 GO
 
 create procedure dbo.create_component 
@@ -177,6 +178,29 @@ begin
 		set @retval = -1;
 		select 'Step ID not found' as response;
 	end
+	return @retval;
+end
+GO
+
+create procedure dbo.record_step_component
+	@ip_step_ID int,
+	@ip_operation_ID int,
+	@ip_product_ID varchar(256),
+	@ip_component_ID int,
+	@ip_component_width float,
+	@ip_component_height float,
+	@ip_component_x float,
+	@ip_component_y float,
+	@ip_component_scaleFactor float
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+	insert into dbo.step_component values(@ip_step_ID, @ip_component_ID, @ip_component_width,
+		@ip_component_height, @ip_component_x, @ip_component_y, @ip_component_scaleFactor, @ip_operation_ID, @ip_product_ID);
+	select 'Success' as response;
+	set @retval = 0;
 	return @retval;
 end
 GO

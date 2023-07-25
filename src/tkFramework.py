@@ -666,7 +666,7 @@ class DrawPage(tk.Frame):
     def process_selected(self, parent):
         selected_item = parent.table.focus()
         print(parent.table.item(selected_item)["values"])
-        tag = str(parent.table.item(selected_item)["values"][0]) + "_" + str(parent.table.item(selected_item)["values"][1])
+        tag = str(parent.table.item(selected_item)["values"][0]) + "\"" + str(parent.table.item(selected_item)["values"][1]) #syntax: ID"name
         file_path = parent.table.item(selected_item)["values"][4]
         # tag = parent.inputtext.get()
         # file_path = fd.askopenfilename()
@@ -682,6 +682,7 @@ class DrawPage(tk.Frame):
         
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
+        parent.destroy()
         # parent.inputtext.delete(0, END)
         self.presentImage(tag)
         
@@ -801,19 +802,34 @@ class DrawPage(tk.Frame):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
             return
-        
+        print([self.controller.newStep.pid, self.controller.newStep.oid, self.controller.newStep.sid,
+                 self.controller.canvasSize[0], self.controller.canvasSize[1], self.controller.newStep.timeLimit, self.controller.newStep.name, self.controller.scaleFactor])
         res = self.controller.dbPacket.run_procedure("add_step",
                 [self.controller.newStep.pid, self.controller.newStep.oid, self.controller.newStep.sid,
-                 self.controller.canvasSize[0], self.controller.canvasSize[1], self.controller.newStep.timeLimit, self.controller.scaleFactor])
+                 self.controller.canvasSize[0], self.controller.canvasSize[1], self.controller.newStep.timeLimit, self.controller.newStep.name, self.controller.scaleFactor])
         if res == "Success":
             output = self.controller.dbPacket.write_query_result()
             if output[1][0] == 0:
+                for id in self.scene.find_all():
+                    tag = self.controller.idToTag[id]
+                    cid = ""
+                    for i in tag:
+                        if i != "\"":
+                            cid += i
+                        else: break
+                    self.controller.dbPacket.run_procedure("record_step_component",
+                        [self.controller.newStep.sid, self.controller.newStep.oid,
+                         self.controller.newStep.pid, cid,
+                         (self.scene.bbox(id)[2] - self.scene.bbox(id)[0]), (self.scene.bbox(id)[3] - self.scene.bbox(id)[1]),
+                         self.scene.coords(id)[0], self.scene.coords(id)[1], self.controller.scaleFactor])
                 # TODO: Save component info
+                # res = self.controller.dbPacket.run_procedure()
                 showinfo(message="good")
             else:
                 showinfo(message=output[0][0])
         else:
             showinfo(message="Invalid Input")
+        self.controller.dbPacket.connection.commit()
         
     
     def save_canvas_toCSV(self):
@@ -977,10 +993,18 @@ class NewShapePage(tk.Frame):
             text="Upload Audio",
             command=self.upload_audio,
         )
+        
+        load_file_button = tk.Button(
+            self,
+            text="Upload Image",
+            command=self.upload_image,
+        )
+        
         scene_config_button.pack()
         create_item_button.pack()
         save_item_button.pack()
         load_audio_save_button.pack()
+        load_file_button.pack()
         back_to_CRUD_button = tk.Button(
             self,
             text="Back to Main Page",
@@ -1062,6 +1086,83 @@ class NewShapePage(tk.Frame):
             showinfo(message="Invalid Input.")
         self.controller.dbPacket.connection.commit()
         parent.destroy()
+ 
+    def upload_image(self):
+        popup = Toplevel(self)
+        popup.geometry("750x400")
+        popup.title("Upload Image")
+        
+        componentFrame = tk.Frame(popup)
+        componentFrame.pack(pady=5)
+        
+        cID_Frame = tk.Frame(popup)
+        cID_Frame.pack(pady=2)
+        cidLabel = tk.Label(popup, text="New Component ID:   ")
+        popup.cID = tk.Entry(popup, bd=1)
+        cidLabel.pack(in_=cID_Frame, side=tk.LEFT)
+        popup.cID.pack(in_=cID_Frame, side=tk.LEFT, padx=1)
+        
+        name_Frame = tk.Frame(popup)
+        name_Frame.pack(pady=2)
+        nameLabel = tk.Label(popup, text="New Component Name:   ")
+        popup.name = tk.Entry(popup, bd=1)
+        nameLabel.pack(in_=name_Frame, side=tk.LEFT)
+        popup.name.pack(in_=name_Frame, side=tk.LEFT, padx=1)
+        
+        cVendor_Frame = tk.Frame(popup)
+        cVendor_Frame.pack(pady=2)
+        cVendorLabel = tk.Label(popup, text="New Component Vendor:   ")
+        popup.cVendor = tk.Entry(popup, bd=1)
+        cVendorLabel.pack(in_=cVendor_Frame, side=tk.LEFT)
+        popup.cVendor.pack(in_=cVendor_Frame, side=tk.LEFT, padx=1)
+        
+        image_Frame = tk.Frame(popup)
+        image_Frame.pack(pady=2)
+        image_select_button = tk.Button(
+            popup,
+            text="select image...",
+            command=lambda: self.select_image(popup)
+        )
+        image_select_button.pack(in_=image_Frame, side=tk.LEFT)
+        popup.currImageName = tk.Label(popup, text="")
+        popup.currImageName.pack(in_=image_Frame, side=tk.LEFT, padx=2)
+        
+        popup.imageDir = ""
+        
+        save_button = tk.Button(
+            popup,
+            text="Save",
+            command=lambda: self.save_image(popup)
+        )
+        save_button.pack(pady=2)
+    
+    def select_image(self, parent):
+        name = fd.askopenfilename(title="Select Image", filetypes=(("image files", "*.png"), ("audio files", "*.jpg")))
+        if name == "":
+            showinfo(message="Invalid Image")
+            return
+        parent.imageDir = name           
+        parent.currImageName.config(text=name)
+        
+    def save_image(self, parent):
+        name = parent.name.get()
+        cID = parent.cID.get()
+        cVendor = parent.cVendor.get()
+        imageDir = parent.imageDir
+        format = imageDir[(imageDir.rfind(".")+1):]
+        
+        if (len(name) == 0 or len(cID) == 0 or len(cVendor) == 0 or len(imageDir) == 0):
+            showinfo(message="Invalid Input")
+            return
+        res = self.controller.dbPacket.run_procedure("add_component", [cID, name, cVendor, format, imageDir])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input.")
+        self.controller.dbPacket.connection.commit()
+        parent.destroy()
+             
         
     def deleteImage(self, event):
         self.cursorX = self.scene.canvasx(event.x)
