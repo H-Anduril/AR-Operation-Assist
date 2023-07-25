@@ -597,7 +597,6 @@ class DrawPage(tk.Frame):
         save_scene_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
         back_to_CRUD_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
     
-
     def update_currInfo(self, event, reset=False):
         if reset:
             self.currImgConfigInfo.config(text="")
@@ -625,8 +624,8 @@ class DrawPage(tk.Frame):
         verticalScroll = Scrollbar(fromDBFrame, orient='vertical')
         verticalScroll.pack(side=tk.RIGHT, fill=Y)
         
-        popup.table = ttk.Treeview(fromDBFrame, yscrollcommand=verticalScroll.set, xscrollcommand=horizontalScroll.set)
-        popup.table.pack()
+        popup.table = ttk.Treeview(fromDBFrame, yscrollcommand=verticalScroll.set, xscrollcommand=horizontalScroll.set, selectmode="browse")
+        popup.table.pack(in_=fromDBFrame)
         verticalScroll.config(command=popup.table.yview)
         horizontalScroll.config(command=popup.table.xview)
         
@@ -645,41 +644,45 @@ class DrawPage(tk.Frame):
             popup.table.insert(parent='',index='end',iid=tableID,text='', values=tuple(row))
             tableID += 1
         
-        selectFrame = Frame(popup)
-        selectFrame.pack()
-        #TODO: implement component selection
-        
-        inputFrame = Frame(popup)
-        inputFrame.pack()
-        popup.inputtext = Entry(popup, width=30)
-        inputLabel = Label(popup, text="New Component Tag")
-        inputLabel.pack(in_=inputFrame, side=tk.LEFT)
-        popup.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
-        upload_file_button = tk.Button(
+        select_button = tk.Button(
             popup,
-            text="Select from File...",
-            command=lambda: self.upload_from_file(popup)
+            text="Confirm",
+            command=lambda: self.process_selected(popup)
         )
-        upload_file_button.pack(in_=inputFrame, side=tk.LEFT)
+        select_button.pack(pady=5)
+        # inputFrame = Frame(popup)
+        # inputFrame.pack()
+        # popup.inputtext = Entry(popup, width=30)
+        # inputLabel = Label(popup, text="New Component Tag")
+        # inputLabel.pack(in_=inputFrame, side=tk.LEFT)
+        # popup.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
+        # upload_file_button = tk.Button(
+        #     popup,
+        #     text="Select from File...",
+        #     command=lambda: self.upload_from_file(popup)
+        # )
+        # upload_file_button.pack(in_=inputFrame, side=tk.LEFT)
         
-    def upload_from_file(self, parent):
-        tag = parent.inputtext.get()
-        file_path = fd.askopenfilename()
-        if (len(tag) == 1):
+    def process_selected(self, parent):
+        selected_item = parent.table.focus()
+        print(parent.table.item(selected_item)["values"])
+        tag = str(parent.table.item(selected_item)["values"][0]) + "_" + str(parent.table.item(selected_item)["values"][1])
+        file_path = parent.table.item(selected_item)["values"][4]
+        # tag = parent.inputtext.get()
+        # file_path = fd.askopenfilename()
+        if (len(tag) == 0):
             showinfo(message="missing tag")
             return
         if file_path == '':
             showinfo(message="file not selected")
             return
-        tag = tag[:-1]
         if tag in self.controller.tagToFileDir or tag in self.controller.tagToID:
             showinfo(message="Tag already exists")
             return
         
-        #TODO: this should be a new component 
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
-        parent.inputtext.delete(0, END)
+        # parent.inputtext.delete(0, END)
         self.presentImage(tag)
         
     def reconfig_size(self):
@@ -1035,7 +1038,7 @@ class NewShapePage(tk.Frame):
         save_button.pack(pady=2)
     
     def select_audio(self, parent):
-        name = tk.filedialog.askopenfilename(title="Select Audio", filetypes=(("audio files", "*.mp3"), ("audio files", "*.mp4")))
+        name = fd.askopenfilename(title="Select Audio", filetypes=(("audio files", "*.mp3"), ("audio files", "*.mp4")))
         if name == "":
             showinfo(message="Invalid Audio")
             return
