@@ -426,7 +426,7 @@ class CRUDPage(tk.Frame):
         
     def confirm_operation_add(self, parent):
         print([parent.oid.get(), parent.productID.get(), parent.oName.get()])
-        res = self.controller.dbPacket.run_procedure("add_operation", [parent.oid.get(), parent.productID.get(), parent.oName.get()])
+        res = self.controller.dbPacket.run_procedure("add_operation", [parent.oid.get(), parent.oName.get(), parent.productID.get()])
         if res == "Success":
             output = self.controller.dbPacket.write_query_result()
             showinfo(message=output[0][0])
@@ -501,7 +501,7 @@ class CRUDPage(tk.Frame):
                 self.controller.newStep.oid = oid
                 self.controller.newStep.sid = sid
                 self.controller.newStep.name = name
-                self.controller.nextStep.timeLimit = timeLimit
+                self.controller.newStep.timeLimit = timeLimit
                 self.controller.newStep.isValid = True
                 parent.destroy()
                 self.controller.show_frame(CanvasConfigPage)
@@ -557,20 +557,13 @@ class DrawPage(tk.Frame):
         
         self.move = False
         
-        inputFrame = Frame(self)
-        inputFrame.pack()
-        self.inputtext = Entry(self, width=30)
-        inputLabel = Label(self, text="Image Tag")
-        inputLabel.pack(in_=inputFrame, side=tk.LEFT)
-        self.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
-        
         buttonsFrame = tk.Frame(self)
         buttonsFrame.pack(pady=5)
         
-        load_file_button = tk.Button(
+        load_component_button = tk.Button(
             self,
-            text="Load File",
-            command=self.load_file,
+            text="Load Component",
+            command=self.load_component,
         )
         
         prev_button = tk.Button(
@@ -587,7 +580,7 @@ class DrawPage(tk.Frame):
         
         draw_shape_button = tk.Button(
             self,
-            text="Create New Shape",
+            text="Create New Component",
             command=self.switch_NewShapePage,
         )
         
@@ -598,7 +591,7 @@ class DrawPage(tk.Frame):
         )
 
         
-        load_file_button.pack(in_=buttonsFrame, side=tk.LEFT)
+        load_component_button.pack(in_=buttonsFrame, side=tk.LEFT)
         draw_shape_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
         prev_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
         save_scene_button.pack(in_=buttonsFrame, side=tk.LEFT, padx=1)
@@ -620,8 +613,57 @@ class DrawPage(tk.Frame):
                                         [(self.scene.bbox(target[0])[2] - self.scene.bbox(target[0])[0]), 
                                         (self.scene.bbox(target[0])[3] - self.scene.bbox(target[0])[1])]))
         
-    def load_file(self):
-        tag = self.inputtext.get()
+    def load_component(self):
+        popup = Toplevel(self)
+        popup.geometry("750x400")
+        popup.title("Load Component")
+        
+        fromDBFrame = tk.Frame(popup, width=500, height=150)
+        fromDBFrame.pack(pady=5)
+        horizontalScroll = Scrollbar(fromDBFrame, orient='horizontal')
+        horizontalScroll.pack(side=tk.BOTTOM, fill=X)
+        verticalScroll = Scrollbar(fromDBFrame, orient='vertical')
+        verticalScroll.pack(side=tk.RIGHT, fill=Y)
+        
+        popup.table = ttk.Treeview(fromDBFrame, yscrollcommand=verticalScroll.set, xscrollcommand=horizontalScroll.set)
+        popup.table.pack()
+        verticalScroll.config(command=popup.table.yview)
+        horizontalScroll.config(command=popup.table.xview)
+        
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.component")
+        for i in popup.table.get_children():
+            popup.table.delete(i)
+        popup.table['columns'] = tuple([col.column_name for col in self.controller.dbPacket.cursor.columns(table='component')])
+        popup.table.column("#0", width=0, stretch=NO)
+        for col in popup.table['columns']:
+            popup.table.column(col, anchor=CENTER, width=300, stretch=NO)
+        popup.table.heading("#0",text="",anchor=CENTER)
+        for col in popup.table['columns']:
+            popup.table.heading(col,text=col,anchor=CENTER)
+        tableID = 0
+        for row in result:
+            popup.table.insert(parent='',index='end',iid=tableID,text='', values=tuple(row))
+            tableID += 1
+        
+        selectFrame = Frame(popup)
+        selectFrame.pack()
+        #TODO: implement component selection
+        
+        inputFrame = Frame(popup)
+        inputFrame.pack()
+        popup.inputtext = Entry(popup, width=30)
+        inputLabel = Label(popup, text="New Component Tag")
+        inputLabel.pack(in_=inputFrame, side=tk.LEFT)
+        popup.inputtext.pack(in_=inputFrame, side=tk.LEFT, padx=1)
+        upload_file_button = tk.Button(
+            popup,
+            text="Select from File...",
+            command=lambda: self.upload_from_file(popup)
+        )
+        upload_file_button.pack(in_=inputFrame, side=tk.LEFT)
+        
+    def upload_from_file(self, parent):
+        tag = parent.inputtext.get()
         file_path = fd.askopenfilename()
         if (len(tag) == 1):
             showinfo(message="missing tag")
@@ -633,9 +675,11 @@ class DrawPage(tk.Frame):
         if tag in self.controller.tagToFileDir or tag in self.controller.tagToID:
             showinfo(message="Tag already exists")
             return
+        
+        #TODO: this should be a new component 
         self.controller.tagToFileDir[tag] = file_path
         showinfo(message="success")
-        self.inputtext.delete(0, END)
+        parent.inputtext.delete(0, END)
         self.presentImage(tag)
         
     def reconfig_size(self):
@@ -892,7 +936,7 @@ class NewShapePage(tk.Frame):
         label = tk.Label(self, text="Create New Item Page")
         label.pack(padx=10, pady=10)
         self.controller = controller
-        self.scene = Canvas(self, width=self.controller.canvasSize[0], height=self.controller.canvasSize[1], bg="white", highlightthickness=1, highlightbackground="black")
+        self.scene = Canvas(self, height=1, width=1, bg="white", highlightthickness=1, highlightbackground="black")
         self.scene.pack()
         
         self.itemWidth = 0.0
@@ -924,9 +968,16 @@ class NewShapePage(tk.Frame):
             text="Save Shape",
             command=self.save_shape,
         )
+        
+        load_audio_save_button = tk.Button(
+            self,
+            text="Upload Audio",
+            command=self.upload_audio,
+        )
         scene_config_button.pack()
         create_item_button.pack()
         save_item_button.pack()
+        load_audio_save_button.pack()
         back_to_CRUD_button = tk.Button(
             self,
             text="Back to Main Page",
@@ -934,6 +985,81 @@ class NewShapePage(tk.Frame):
         )
         back_to_CRUD_button.pack()
     
+    def upload_audio(self):
+        popup = Toplevel(self)
+        popup.geometry("750x400")
+        popup.title("Upload Audio")
+        
+        componentFrame = tk.Frame(popup)
+        componentFrame.pack(pady=5)
+        
+        cID_Frame = tk.Frame(popup)
+        cID_Frame.pack(pady=2)
+        cidLabel = tk.Label(popup, text="New Component ID:   ")
+        popup.cID = tk.Entry(popup, bd=1)
+        cidLabel.pack(in_=cID_Frame, side=tk.LEFT)
+        popup.cID.pack(in_=cID_Frame, side=tk.LEFT, padx=1)
+        
+        name_Frame = tk.Frame(popup)
+        name_Frame.pack(pady=2)
+        nameLabel = tk.Label(popup, text="New Component Name:   ")
+        popup.name = tk.Entry(popup, bd=1)
+        nameLabel.pack(in_=name_Frame, side=tk.LEFT)
+        popup.name.pack(in_=name_Frame, side=tk.LEFT, padx=1)
+        
+        cVendor_Frame = tk.Frame(popup)
+        cVendor_Frame.pack(pady=2)
+        cVendorLabel = tk.Label(popup, text="New Component Vendor:   ")
+        popup.cVendor = tk.Entry(popup, bd=1)
+        cVendorLabel.pack(in_=cVendor_Frame, side=tk.LEFT)
+        popup.cVendor.pack(in_=cVendor_Frame, side=tk.LEFT, padx=1)
+        
+        audio_Frame = tk.Frame(popup)
+        audio_Frame.pack(pady=2)
+        audio_select_button = tk.Button(
+            popup,
+            text="select audio...",
+            command=lambda: self.select_audio(popup)
+        )
+        audio_select_button.pack(in_=audio_Frame, side=tk.LEFT)
+        popup.currAudioName = tk.Label(popup, text="")
+        popup.currAudioName.pack(in_=audio_Frame, side=tk.LEFT, padx=2)
+        
+        popup.audioDir = ""
+        
+        save_button = tk.Button(
+            popup,
+            text="Save",
+            command=lambda: self.save_audio(popup)
+        )
+        save_button.pack(pady=2)
+    
+    def select_audio(self, parent):
+        name = tk.filedialog.askopenfilename(title="Select Audio", filetypes=(("audio files", "*.mp3"), ("audio files", "*.mp4")))
+        if name == "":
+            showinfo(message="Invalid Audio")
+            return
+        parent.audioDir = name           
+        parent.currAudioName.config(text=name)
+        
+    def save_audio(self, parent):
+        name = parent.name.get()
+        cID = parent.cID.get()
+        cVendor = parent.cVendor.get()
+        audioDir = parent.audioDir
+        
+        if (len(name) == 0 or len(cID) == 0 or len(cVendor) == 0 or len(audioDir) == 0):
+            showinfo(message="Invalid Input")
+            return
+        res = self.controller.dbPacket.run_procedure("add_component", [cID, name, cVendor, "audio", audioDir])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input.")
+        self.controller.dbPacket.connection.commit()
+        parent.destroy()
+        
     def deleteImage(self, event):
         self.cursorX = self.scene.canvasx(event.x)
         self.cursorY = self.scene.canvasy(event.y)
@@ -1086,17 +1212,56 @@ class NewShapePage(tk.Frame):
         if len(self.scene.find_all()) == 0:
             showinfo(message="Empty scene")
             return
-        name = askstring('Image Name', 'Name of output image file')
-        if name == "":
-            showinfo(message="Invalid output file name")
+        
+        popup = Toplevel(self)
+        popup.geometry("750x400")
+        popup.title("Save Component")
+        
+        componentFrame = tk.Frame(popup)
+        componentFrame.pack(pady=5)
+        
+        cID_Frame = tk.Frame(popup)
+        cID_Frame.pack(pady=2)
+        cidLabel = tk.Label(popup, text="New Component ID:   ")
+        popup.cID = tk.Entry(popup, bd=1)
+        cidLabel.pack(in_=cID_Frame, side=tk.LEFT)
+        popup.cID.pack(in_=cID_Frame, side=tk.LEFT, padx=1)
+        
+        name_Frame = tk.Frame(popup)
+        name_Frame.pack(pady=2)
+        nameLabel = tk.Label(popup, text="New Component Name:   ")
+        popup.name = tk.Entry(popup, bd=1)
+        nameLabel.pack(in_=name_Frame, side=tk.LEFT)
+        popup.name.pack(in_=name_Frame, side=tk.LEFT, padx=1)
+        
+        cVendor_Frame = tk.Frame(popup)
+        cVendor_Frame.pack(pady=2)
+        cVendorLabel = tk.Label(popup, text="New Component Vendor:   ")
+        popup.cVendor = tk.Entry(popup, bd=1)
+        cVendorLabel.pack(in_=cVendor_Frame, side=tk.LEFT)
+        popup.cVendor.pack(in_=cVendor_Frame, side=tk.LEFT, padx=1)
+        
+        save_shape_button = tk.Button(
+            popup,
+            text="Save Shape",
+            command=lambda: self.process_shape_info(popup)
+        )
+        save_shape_button.pack(pady=2)
+    
+    def process_shape_info(self, parent):
+        name = parent.name.get()
+        cID = parent.cID.get()
+        cVendor = parent.cVendor.get()
+        
+        if (len(cID) == 0 or len(name) == 0 or len(cVendor) == 0):
+            showinfo(message="Invalid Input")
             return
+        
         print(self.itemHeight, self.itemWidth)
         ps = self.scene.postscript(colormode="color", pagewidth=self.itemWidth-1, pageheight=self.itemHeight-1)
         img = Image.open(io.BytesIO(ps.encode('utf-8')))
-        
         img = img.resize(((int)(img.size[0]/self.scaleFactor), (int)(img.size[1]/self.scaleFactor)), Image.BICUBIC)
         print(img.size)
-        
         img = img.convert("RGBA")
         datas = img.getdata()
         newData = []
@@ -1105,13 +1270,27 @@ class NewShapePage(tk.Frame):
                 newData.append((255, 255, 255, 0))
             else:
                 newData.append(item)
-
         img.putdata(newData)
+        fdir = tk.filedialog.askdirectory(title="Directory to Save")
         # im = open_eps(ps, dpi=119.5)
-        image_fileName = "/output/images/{}.png".format(name)
+        # image_fileName = "/output/images/{}.png".format(name)
+        image_fileName = fdir + "/" + cID + "_" + name + ".png"
+        print(image_fileName)
         # im.save(".." + image_fileName, dpi=(119.5, 119.5))
-        img.save(".." + image_fileName)
-        showinfo(message="Success")
+        # img.save(".." + image_fileName)
+        img.save(image_fileName)
+            
+            
+        res = self.controller.dbPacket.run_procedure("add_component", [cID, name, cVendor, "png", image_fileName])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            showinfo(message=output[0][0])
+        else:
+            showinfo(message="Invalid Input.")
+        self.controller.dbPacket.connection.commit()
+        parent.destroy()
+        self.scene.delete("all")
+        self.scene.config(height=0, width=0)
     
     def choose_color(self, parent):
         parent.color = colorchooser.askcolor(parent=parent, title="Choose color")

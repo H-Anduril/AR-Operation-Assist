@@ -9,6 +9,7 @@ drop procedure if exists dbo.add_product;
 drop procedure if exists dbo.add_operation;
 drop procedure if exists dbo.verify_step;
 drop procedure if exists dbo.add_step;
+drop procedure if exists dbo.add_component;
 GO
 
 create procedure dbo.create_component 
@@ -114,6 +115,29 @@ begin
 	select 'Success' as response;
 	set @retval = 0;
 	return @retval;
+end
+GO
+
+create procedure dbo.add_component
+	@ip_component_ID int,
+	@ip_component_name varchar(256),
+	@ip_component_vendor varchar(256),
+	@ip_component_type varchar(256),
+	@ip_component_directory varchar(256)
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+	if @ip_component_ID not in (select component_ID from dbo.component) begin
+		insert into dbo.component values(@ip_component_ID, @ip_component_name, @ip_component_vendor, @ip_component_type, @ip_component_directory);
+		select 'Success' as response;
+		set @retval = 0;
+	end
+	else begin
+		select 'Component Already Exists' as response;
+		set @retval = 1;
+	end
 end
 GO
 
