@@ -11,6 +11,8 @@ drop procedure if exists dbo.verify_step;
 drop procedure if exists dbo.add_step;
 drop procedure if exists dbo.add_component;
 drop procedure if exists dbo.record_step_component;
+drop procedure if exists dbo.retrieve_step;
+drop procedure if exists dbo.get_component;
 GO
 
 create procedure dbo.create_component 
@@ -237,6 +239,65 @@ begin
 	else begin
 		set @retval = 3;
 		select 'Product not Exist' as response;
+	end
+	return @retval;
+end
+GO
+
+create procedure dbo.retrieve_step
+	@ip_product_ID int,
+	@ip_operation_ID int,
+	@ip_step_ID int
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+
+	if @ip_product_ID in (select product_ID from dbo.step)
+	begin
+		if @ip_operation_ID in (select operation_ID from dbo.step where product_ID = @ip_product_ID)
+		begin
+			if @ip_step_ID in (select step_ID from dbo.step where product_ID = @ip_product_ID and operation_ID = @ip_operation_ID)
+			begin
+				select * from dbo.step_component where product_ID = @ip_product_ID and operation_ID = @ip_operation_ID and step_ID = @ip_step_ID;
+				set @retval = 0;
+				select 'Success' as response;
+			end
+			else begin
+				set @retval = 1;
+				select 'Step ID Not Exist' as response;
+			end
+		end
+		else begin
+			set @retval = 2;
+			select 'Operation not Exist' as response;
+		end
+	end
+	else begin
+		set @retval = 3;
+		select 'Product not Exist' as response;
+	end
+	return @retval;
+end
+GO
+
+create procedure dbo.get_component
+	@ip_component_ID int
+
+as
+begin
+	set NOCOUNT ON;
+	declare @retval int;
+
+	if @ip_component_ID in (select component_ID from dbo.component) begin
+		select * from dbo.component where component_ID = @ip_component_ID;
+		set @retval = 0;
+		select 'Success' as response;
+	end
+	else begin
+		set @retval = 1;
+		select 'Component not Exist' as response;
 	end
 	return @retval;
 end

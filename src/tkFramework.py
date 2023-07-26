@@ -311,6 +311,16 @@ class CRUDPage(tk.Frame):
         delete_steps_button.pack(in_=deleteFrame, side=tk.LEFT, padx=2)
         delete_components_button.pack(in_=deleteFrame, side=tk.LEFT, padx=2)
         
+        miscFrame = tk.Frame(self)
+        miscFrame.pack(pady=10)
+        
+        preview_step_button = tk.Button(
+            self,
+            text="Preview a Step",
+            command=self.preview_step
+        )
+        preview_step_button.pack(in_=miscFrame, side=tk.LEFT)
+        
         displayTableFrame = tk.Frame(self, width=800, height=400)
         displayTableFrame.pack(pady=20)
         horizontalScroll = Scrollbar(displayTableFrame, orient='horizontal')
@@ -322,6 +332,77 @@ class CRUDPage(tk.Frame):
         self.table.pack()
         verticalScroll.config(command=self.table.yview)
         horizontalScroll.config(command=self.table.xview)
+    
+    def preview_step(self):
+        popup = Toplevel(self)
+        popup.geometry("750x400")
+        popup.title("Preview Step")
+        
+        fromDBFrame = tk.Frame(popup, width=500, height=150)
+        fromDBFrame.pack(pady=5)
+        horizontalScroll = Scrollbar(fromDBFrame, orient='horizontal')
+        horizontalScroll.pack(side=tk.BOTTOM, fill=X)
+        verticalScroll = Scrollbar(fromDBFrame, orient='vertical')
+        verticalScroll.pack(side=tk.RIGHT, fill=Y)
+        
+        popup.table = ttk.Treeview(fromDBFrame, yscrollcommand=verticalScroll.set, xscrollcommand=horizontalScroll.set, selectmode="browse")
+        popup.table.pack(in_=fromDBFrame)
+        verticalScroll.config(command=popup.table.yview)
+        horizontalScroll.config(command=popup.table.xview)
+        
+        result = self.controller.dbPacket.run_query_wResult(sql="select * from dbo.step")
+        for i in popup.table.get_children():
+            popup.table.delete(i)
+        popup.table['columns'] = tuple([col.column_name for col in self.controller.dbPacket.cursor.columns(table='step')])
+        popup.table.column("#0", width=0, stretch=NO)
+        for col in popup.table['columns']:
+            popup.table.column(col, anchor=CENTER, width=300, stretch=NO)
+        popup.table.heading("#0",text="",anchor=CENTER)
+        for col in popup.table['columns']:
+            popup.table.heading(col,text=col,anchor=CENTER)
+        tableID = 0
+        for row in result:
+            popup.table.insert(parent='',index='end',iid=tableID,text='', values=tuple(row))
+            tableID += 1
+        
+        select_button = tk.Button(
+            popup,
+            text="Confirm",
+            command=lambda: self.process_preview(popup)
+        )
+        select_button.pack(pady=5)
+        
+    def process_preview(self, parent):
+        selected_item = parent.table.focus()
+        print(parent.table.item(selected_item)["values"])
+        pid = parent.table.item(selected_item)["values"][3]
+        oid = parent.table.item(selected_item)["values"][2]
+        sid = parent.table.item(selected_item)["values"][0]
+        scaleFactor = parent.table.item(selected_item)["values"][7]
+        res = self.controller.dbPacket.run_procedure("retrieve_step", [pid, oid, sid])
+        if res == "Success":
+            output = self.controller.dbPacket.write_query_result()
+            preview = Image.new(mode="RGBA", size=(int(float(parent.table.item(selected_item)["values"][4])), int(float(parent.table.item(selected_item)["values"][5]))))
+            entries_step_component = output[:-2]
+            for entry in entries_step_component:
+                print(entry)
+                result = self.controller.dbPacket.run_procedure("get_component", str(entry[1]))
+                if result == "Success":
+                    component = self.controller.dbPacket.write_query_result()
+                    if component[-1][0] == 0:
+                        component = component[0]
+                    if component[3] == 'png':
+                        im = Image.open(component[4])
+                        im = im.resize((int(entry[2]), int(entry[3])))
+                        preview.paste(im, (int(entry[4]), int(entry[5])))
+            preview.save('testpreview.png', quality=95)
+            preview.show()
+            # TODO: make preview a second screen
+        else:
+            showinfo(message="Invalid Input.")
+            return
+        showinfo(message="success")
+        parent.destroy()
     
     #CRUD: Read APIs
     def display_to_table(self, tableName: str, result: list):
@@ -698,7 +779,7 @@ class DrawPage(tk.Frame):
         # newImage = newImage.zoom(0.5, 0.5)
         self.controller.tagToPhotoImage[tag] = newPhotoImage
         self.controller.tagToImage[tag] = newImage
-        id = self.scene.create_image(250, 250, anchor=CENTER, image=newPhotoImage)
+        id = self.scene.create_image(250, 250, anchor=NW, image=newPhotoImage)
         self.controller.idToPhotoImage[id] = newPhotoImage
         self.controller.idToImage[id] = newImage
         self.controller.idToTag[id] = tag
