@@ -79,6 +79,7 @@ class windows(tk.Tk):
         self.scaleFactor = 1.0
         
         self.canvasSize = (0, 0)
+        self.inputCanvasSize = (0, 0)
         # we'll create the frames themselves later but let's add the components to the dictionary.
         for F in (DrawPage, CanvasConfigPage, NewShapePage, DBConfigPage, CRUDPage):
             frame = F(container, self)
@@ -687,11 +688,11 @@ class DrawPage(tk.Frame):
         if target == ():
             return
         self.currImgConfigInfo.config(text=
-                              "Current Image/Shape Tag: {} | Current Image/Shape Center Coordinates (x, y): {} | Current Image Size: {}"
-                              .format(self.controller.idToTag[target[0]],
-                                        self.scene.coords(target[0]),
-                                        [(self.scene.bbox(target[0])[2] - self.scene.bbox(target[0])[0]), 
-                                        (self.scene.bbox(target[0])[3] - self.scene.bbox(target[0])[1])]))
+                              "Canvas Size: {} | Current Component ID\"Name: {} | Current Image/Shape Center Coordinates (x, y): {} | Current Image Size: {}"
+                              .format(self.controller.inputCanvasSize, self.controller.idToTag[target[0]],
+                                        [int(self.scene.coords(target[0])[0]/self.controller.scaleFactor), int(self.scene.coords(target[0])[1]/self.controller.scaleFactor)],
+                                        [int((self.scene.bbox(target[0])[2] - self.scene.bbox(target[0])[0])/self.controller.scaleFactor), 
+                                        int((self.scene.bbox(target[0])[3] - self.scene.bbox(target[0])[1])/self.controller.scaleFactor)]))
         
     def load_component(self):
         popup = Toplevel(self)
@@ -1006,6 +1007,7 @@ class CanvasConfigPage(tk.Frame):
             return
         canvasWidth = float(canvasWidth)
         canvasHeight = float(canvasHeight)
+        self.controller.inputCanvasSize = (canvasWidth, canvasHeight)
         if (canvasHeight == 0.0 or canvasWidth == 0.0):
             showinfo(message="Invalid Canvas Size")
             return
@@ -1022,8 +1024,8 @@ class CanvasConfigPage(tk.Frame):
             self.controller.canvasSize = (self.controller.maxWidth, int(canvasHeight * self.controller.scaleFactor))
         
         showinfo(message="canvas width: {} | canvas height: {} | Scale Factor: {}".format(
-            self.controller.canvasSize[0],
-            self.controller.canvasSize[1],
+            self.controller.inputCanvasSize[0],
+            self.controller.inputCanvasSize[1],
             self.controller.scaleFactor))
             
     
@@ -1243,8 +1245,7 @@ class NewShapePage(tk.Frame):
             showinfo(message="Invalid Input.")
         self.controller.dbPacket.connection.commit()
         parent.destroy()
-             
-        
+                    
     def deleteImage(self, event):
         self.cursorX = self.scene.canvasx(event.x)
         self.cursorY = self.scene.canvasy(event.y)
@@ -1459,7 +1460,7 @@ class NewShapePage(tk.Frame):
         fdir = tk.filedialog.askdirectory(title="Directory to Save")
         # im = open_eps(ps, dpi=119.5)
         # image_fileName = "/output/images/{}.png".format(name)
-        image_fileName = fdir + "/" + cID + "_" + name + ".png"
+        image_fileName = fdir + "/" + name + ".png"
         print(image_fileName)
         # im.save(".." + image_fileName, dpi=(119.5, 119.5))
         # img.save(".." + image_fileName)
