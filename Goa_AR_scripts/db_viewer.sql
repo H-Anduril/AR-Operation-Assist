@@ -27,5 +27,5 @@ select * from dbo.step;
 insert into dbo.step values(1, '1', 5, 10, -1, -1, 1, 1);
 
 declare @return_value int;
-EXECUTE @return_value = get_component '10';
+EXECUTE @return_value = get_component '1';
 select 'Return Value' = @return_value;

@@ -14,7 +14,6 @@ create table dbo.product (
 	CONSTRAINT pk_product_ID PRIMARY KEY (product_ID)
 );
 
-
 create table dbo.operation (
 	operation_ID int NOT NULL,
 	product_ID varchar(256) NOT NULL,
@@ -23,7 +22,6 @@ create table dbo.operation (
 		REFERENCES dbo.product(product_ID),
 	CONSTRAINT pk_operation_ID PRIMARY KEY (product_ID, operation_ID)
 );
-
 
 create table dbo.step (
 	step_ID int NOT NULL,
@@ -34,11 +32,12 @@ create table dbo.step (
 	panel_size_height float NOT NULL,
 	step_time_limit_sec int NOT NULL,
 	scale_factor float NOT NULL,
+	--passing_bar float NOT NULL,
+	--failing_bar float NOT NULL,
 	CONSTRAINT fk_p_op_ID FOREIGN KEY (product_ID, operation_ID)
 		REFERENCES dbo.operation(product_ID, operation_ID),
 	CONSTRAINT pk_step_ID PRIMARY KEY (product_ID, operation_ID, step_ID)
 );
-
 
 create table dbo.component (
 	component_ID int NOT NULL,

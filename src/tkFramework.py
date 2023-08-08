@@ -38,7 +38,6 @@ class newStep:
         self.name = ""
         self.timeLimit = -1
         
-
 class windows(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -183,6 +182,7 @@ class DisplayPage(tk.Frame):
                         im = Image.open(component[4])
                         im = im.resize((int(entry[2]), int(entry[3])))
                         preview.paste(im, (int(entry[4]), int(entry[5])))
+            preview.save("../output/step_preview/test_preview.png")
             temp = ImageTk.PhotoImage(preview.resize((600, 400)))
             self.displayLabel.config(image=temp)
             self.displayLabel.image = temp
@@ -191,8 +191,7 @@ class DisplayPage(tk.Frame):
             return
         showinfo(message="success")
         parent.destroy()
-    
-        
+            
 class DBConfigPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -492,6 +491,7 @@ class CRUDPage(tk.Frame):
             output = self.controller.dbPacket.write_query_result()
             showinfo(message=output[0][0])
         else:
+            print(res)
             showinfo(message="Invalid Input.")
         self.controller.dbPacket.connection.commit()
         parent.destroy()
@@ -595,7 +595,7 @@ class CRUDPage(tk.Frame):
         name = parent.name.get()
         
         if (len(sid) == 0 or len(oid) == 0 or len(pid) == 0 or len(timeLimit) == 0
-            or not sid.lstrip('-+').isdigit() or not oid.lstrip('-+').isdigit() or not pid.lstrip('-+').isdigit() or not timeLimit.lstrip('-+').isdigit()):
+            or not sid.lstrip('-+').isdigit() or not oid.lstrip('-+').isdigit() or not timeLimit.lstrip('-+').isdigit()):
             showinfo(message="Invalid Input")
             return
         res = self.controller.dbPacket.run_procedure("verify_step", [pid, oid, sid])
@@ -1480,7 +1480,7 @@ class NewShapePage(tk.Frame):
         fdir = tk.filedialog.askdirectory(title="Directory to Save")
         # im = open_eps(ps, dpi=119.5)
         # image_fileName = "/output/images/{}.png".format(name)
-        image_fileName = fdir + "/" + name + ".png"
+        image_fileName = fdir + "/" + str(cID) + "_" + name + ".png"
         print(image_fileName)
         # im.save(".." + image_fileName, dpi=(119.5, 119.5))
         # img.save(".." + image_fileName)
@@ -1501,8 +1501,7 @@ class NewShapePage(tk.Frame):
     def choose_color(self, parent):
         parent.color = colorchooser.askcolor(parent=parent, title="Choose color")
         parent.color_label.config(bg=parent.color[-1])
-            
-        
+                  
 if __name__ == "__main__":
     testObj = windows()
     testObj.mainloop()

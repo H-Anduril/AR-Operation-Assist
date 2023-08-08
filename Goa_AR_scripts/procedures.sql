@@ -44,7 +44,7 @@ end
 GO
 
 create procedure dbo.add_product
-	@ip_product_ID int,
+	@ip_product_ID varchar(256),
 	@ip_product_name varchar(256)
 
 as
@@ -77,7 +77,7 @@ begin
 	declare @retval int;
 	if @ip_product_ID in (select product_ID from dbo.product)
 	begin
-		if @ip_operation_ID in (select operation_ID from dbo.operation)
+		if @ip_operation_ID in (select operation_ID from dbo.operation where product_ID = @ip_product_ID)
 		begin
 			select 'Operation Already Exists' as response
 			set @retval = 2;
@@ -99,11 +99,11 @@ end
 GO
 
 create procedure dbo.add_step
-	@ip_product_ID int,
+	@ip_product_ID varchar(256),
 	@ip_operation_ID int,
 	@ip_step_ID int,
-	@ip_panel_size_width int,
-	@ip_panel_size_height int,
+	@ip_panel_size_width float,
+	@ip_panel_size_height float,
 	@ip_step_time_limit int,
 	@ip_step_name varchar(256),
 	@ip_scale_factor float
@@ -208,7 +208,7 @@ end
 GO
 
 create procedure dbo.verify_step
-	@ip_product_ID int,
+	@ip_product_ID varchar(256),
 	@ip_operation_ID int,
 	@ip_step_ID int
 
@@ -245,7 +245,7 @@ end
 GO
 
 create procedure dbo.retrieve_step
-	@ip_product_ID int,
+	@ip_product_ID varchar(256),
 	@ip_operation_ID int,
 	@ip_step_ID int
 
