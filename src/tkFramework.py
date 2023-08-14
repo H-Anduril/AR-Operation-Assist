@@ -173,7 +173,8 @@ class DisplayPage(tk.Frame):
             entries_step_component = output[:-2]
             for entry in entries_step_component:
                 print(entry)
-                result = self.controller.dbPacket.run_procedure("get_component", str(entry[1]))
+                print(entry[1])
+                result = self.controller.dbPacket.run_procedure("get_component", [str(entry[1])])
                 if result == "Success":
                     component = self.controller.dbPacket.write_query_result()
                     if component[-1][0] == 0:
@@ -186,10 +187,10 @@ class DisplayPage(tk.Frame):
             temp = ImageTk.PhotoImage(preview.resize((600, 400)))
             self.displayLabel.config(image=temp)
             self.displayLabel.image = temp
+            showinfo(message="success")
         else:
             showinfo(message="Invalid Input.")
             return
-        showinfo(message="success")
         parent.destroy()
             
 class DBConfigPage(tk.Frame):

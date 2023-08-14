@@ -121,13 +121,16 @@ def connect(dbConfig):
     if len(driver_names) > 0:
         driver_name = '{' + driver_names[0] + '}'
     if driver_name:
-        connect_str = 'DRIVER={};SERVER={};DATABASE={};ENCRYPT=no;UID={};PWD={}'.format(
+        print(driver_name)
+        connect_str = 'DRIVER={};SERVER={};DATABASE={};ENCRYPT=no;UID={};PWD={};TDS_Version=7.4;TrustServerCertificate=yes;'.format(
             driver_name,
-            dbConfig.server,
+            #dbConfig.server,
+            dbConfig.server + ".commscope.com,1433",
             dbConfig.database,
             dbConfig.username,
             dbConfig.password
         )
+        print(dbConfig.server)
     else:
         print("No suitable driver found. Connection Failed")
         return new_dbPacket
@@ -140,6 +143,6 @@ def connect(dbConfig):
         new_dbPacket.cursor = cnxn.cursor()
         new_dbPacket.connection = cnxn
     except pyodbc.Error as ex:
-        #print(ex.args[1])
+        print(ex.args[1])
         print("Connection Failed")
     return new_dbPacket
