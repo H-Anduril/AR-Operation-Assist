@@ -1,6 +1,6 @@
 variables:
-    - IMAGE_NAME: anduril5678/ar-op-assist
-    - IMAGE_TAG: 0.1.0
+    IMAGE_NAME: anduril5678/ar-op-assist
+    IMAGE_TAG: 0.1.0
 
 stages:
     - test
