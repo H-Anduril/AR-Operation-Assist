@@ -1,5 +1,5 @@
 variables:
-    IMAGE_NAME: anduril5678/ar-op-assist
+    IMAGE_NAME: ar-op-assist
     IMAGE_TAG: 0.1.0
 
 stages:
@@ -11,11 +11,11 @@ build_image:
     stage: build
     image: docker:24.0.5
     services:
-        -  doccker:24.0.5-dind
+        -  docker:24.0.5-dind
     variables:
         DOCKER_TLS_CERTDIR: "/certs"
     before_script:
-        - docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD
+        - docker login registry.gitlab.com -u $GITLAB_REGISTRY_USER -p $GITLAB_REGISTRY_PASSWORD
     script:
-        - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-        - docker push $IMAGE_NAME:$IMAGE_TAG
+        - docker build -t registry.gitlab.com/$GITLAB_REGISTRY_USER/$IMAGE_NAME:$IMAGE_TAG .
+        - docker push registry.gitlab.com/$GITLAB_REGISTRY_USER/$IMAGE_NAME:$IMAGE_TAG
