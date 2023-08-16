@@ -18,5 +18,15 @@ build_image:
     before_script:
         - docker login registry.gitlab.com -u $GITLAB_REGISTRY_USER -p $GITLAB_REGISTRY_PASSWORD
     script:
-        - docker build -t registry.gitlab.com/$GITLAB_REGISTRY_USER/$IMAGE_NAME:$IMAGE_TAG .
-        - docker push registry.gitlab.com/$GITLAB_REGISTRY_USER/$IMAGE_NAME:$IMAGE_TAG
+        - docker build -t registry.gitlab.com/$GITLAB_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
+        - docker push registry.gitlab.com/$GITLAB_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
+
+deploy_container:
+    tags:
+        - Docker
+    stage: deploy
+    before_script:
+        - docker login registry.gitlab.com -u $GITLAB_REGISTRY_USER -p $GITLAB_REGISTRY_PASSWORD
+    script:
+        - docker run -i -t --rm -p 1433:1433 -p 3000:3000 -v C:/Users/hw1048/Documents/AR-Operation-Assist-GitLab/output:/usr/src/app/output  $IMAGE_NAME:$IMAGE_TAG
+
