@@ -14,7 +14,7 @@ build_image:
     variables:
         DOCKER_HOST: tcp://docker:2375
         DOCKER_DRIVER: overlay2
-        DOCKER_TLS_CERTDIR: ""
+        DOCKER_TLS_CERTDIR: "/cert"
     services:
         -   name: docker:24.0.5-dind
             alias: docker
