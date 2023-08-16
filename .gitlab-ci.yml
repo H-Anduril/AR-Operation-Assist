@@ -21,7 +21,7 @@ build_image:
             command: ["--tls=false"]
     before_script:
         - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-        - docker login registry.gitlab.com -u $GITLAB_REGISTRY_USER -p $GITLAB_REGISTRY_PASSWORD
+        - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin registry.gitlab.com
     script:
         - docker build -t registry.gitlab.com/$GITLAB_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
         - docker push registry.gitlab.com/$GITLAB_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
