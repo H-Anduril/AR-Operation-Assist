@@ -14,14 +14,12 @@ build_image:
     variables:
         DOCKER_HOST: tcp://docker:2375
         DOCKER_DRIVER: overlay2
-        DOCKER_TLS_CERTDIR: "/cert"
+        DOCKER_TLS_CERTDIR: ""
+        MOUNT_POINT: /builds/$CI_PROJECT_PATH/mnt
     services:
         -   name: docker:24.0.5-dind
             alias: docker
             command: ["--tls=false"]
-    before_script:
-        - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-        - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     script:
         - docker build -t registry.gitlab.com/$CI_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
         - docker push registry.gitlab.com/$CI_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
