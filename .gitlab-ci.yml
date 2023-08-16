@@ -3,11 +3,12 @@ variables:
     IMAGE_TAG: 0.1.0
 
 stages:
-    - test
     - build
     - deploy
 
 build_image:
+    tags:
+        - Docker
     stage: build
     image: docker:24.0.5
     services:
