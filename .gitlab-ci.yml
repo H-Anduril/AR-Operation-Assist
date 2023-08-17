@@ -31,7 +31,7 @@ deploy_container:
         - Shell
     stage: deploy
     script:
-        - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
+        - echo "$CI_DEPLOY_PASSWORD" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
         - docker run -i -t --rm -p 1433:1433 -p 3000:3000 -v C:/Users/hw1048/Documents/AR-Operation-Assist-GitLab/output:/usr/src/app/output \
             "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
 
