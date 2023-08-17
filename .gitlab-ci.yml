@@ -21,17 +21,17 @@ build_image:
             alias: docker
             command: ["--tls=false"]
     script:
-        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-        - docker build -t $CI_REGISTRY/$CI_REGISTRY_USER/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
-        - docker image tag $IMAGE_NAME:$IMAGE_TAG $CI_REGISTRY/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
-        - docker image push $CI_REGISTRY/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
+        - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
+        - docker build -t registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
+        - docker image tag $IMAGE_NAME:$IMAGE_TAG registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
+        - docker image push registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
 
 deploy_container:
     tags:
         - Docker
     stage: deploy
     before_script:
-        - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+        - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
     script:
         - docker run -i -t --rm -p 1433:1433 -p 3000:3000 -v C:/Users/hw1048/Documents/AR-Operation-Assist-GitLab/output:/usr/src/app/output  $IMAGE_NAME:$IMAGE_TAG
 
