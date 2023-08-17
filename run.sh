@@ -33,6 +33,15 @@ handle_options() {
             -r | --run)
                 docker run -i -t --rm -p 1433:1433 -p 3000:3000 -v C:/Users/hw1048/Documents/AR-Operation-Assist/output:/usr/src/app/output  goa_op_assist
                 ;;
+            -s | --set-runner)
+                docker run -d --name gitlab-runner --restart always \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v gitlab-runner-config:/etc/gitlab-runner \
+                    gitlab/gitlab-runner:latest
+                    
+                docker run --rm -it -v gitlab-runner-config:/etc/gitlab-runner gitlab/gitlab-runner:latest register
+                ;;
+
             *)
                 # echo "Invalid option: $1" >&2
                 usage
