@@ -23,7 +23,7 @@ build_image:
     script:
         - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
         - docker build -t registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG .
-        - docker image tag $IMAGE_NAME:$IMAGE_TAG registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
+        - docker image tag registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
         - docker image push registry.gitlab.com/mranduril/ar-operation-assist/$IMAGE_NAME:$IMAGE_TAG
 
 deploy_container:
