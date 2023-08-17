@@ -28,10 +28,9 @@ build_image:
 
 deploy_container:
     tags:
-        - Docker
+        - Shell
     stage: deploy
-    before_script:
-        - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
     script:
+        - echo "$CI_JOB_TOKEN" | docker login registry.gitlab.com -u $CI_REGISTRY_USER --password-stdin
         - docker run -i -t --rm -p 1433:1433 -p 3000:3000 -v C:/Users/hw1048/Documents/AR-Operation-Assist-GitLab/output:/usr/src/app/output  $IMAGE_NAME:$IMAGE_TAG
 
